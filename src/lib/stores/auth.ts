@@ -19,7 +19,7 @@ export const useAuthStore = create<AuthState>()(
       logout: () => set({ isAuthenticated: false }),
     }),
     {
-      name: 'auth-store',
+      name: String('auth-store') || '',
       partialize: (state) => ({
         isPinSet: state.isPinSet,
         isAuthenticated: state.isAuthenticated,

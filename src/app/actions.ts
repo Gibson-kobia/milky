@@ -8,13 +8,6 @@ export async function addMilkDelivery(
   deliveryType: 'morning' | 'evening',
   date: string
 ) {
-  console.log('[MILKY-LOG] addMilkDelivery()', {
-    farmerId,
-    litres,
-    deliveryType,
-    date,
-  });
-
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -34,7 +27,7 @@ export async function addMilkDelivery(
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error adding milk delivery:', error);
+    console.error(error);
     return {
       success: false,
       error:
@@ -47,7 +40,6 @@ export async function updateMilkDelivery(
   deliveryId: string,
   litres: number
 ) {
-  console.log('[MILKY-LOG] updateMilkDelivery()', { deliveryId, litres });
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -64,7 +56,7 @@ export async function updateMilkDelivery(
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error updating milk delivery:', error);
+    console.error(error);
     return {
       success: false,
       error:
@@ -74,7 +66,6 @@ export async function updateMilkDelivery(
 }
 
 export async function getTodayDeliveries(date: string) {
-  console.log('[MILKY-LOG] getTodayDeliveries()', { date });
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -86,7 +77,7 @@ export async function getTodayDeliveries(date: string) {
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error fetching deliveries:', error);
+    console.error(error);
     return {
       success: false,
       error:
@@ -96,7 +87,6 @@ export async function getTodayDeliveries(date: string) {
 }
 
 export async function getFarmers() {
-  console.log('[MILKY-LOG] getFarmers()');
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -109,7 +99,7 @@ export async function getFarmers() {
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error fetching farmers:', error);
+    console.error(error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch farmers',
@@ -123,7 +113,6 @@ export async function addFarmer(
   eveningDeliveryEnabled: boolean,
   notes: string | null
 ) {
-  console.log('[MILKY-LOG] addFarmer()', { name, phone, eveningDeliveryEnabled });
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -143,7 +132,7 @@ export async function addFarmer(
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error adding farmer:', error);
+    console.error(error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to add farmer',
@@ -152,7 +141,6 @@ export async function addFarmer(
 }
 
 export async function getLedgerEntries(farmerId?: string) {
-  console.log('[MILKY-LOG] getLedgerEntries()', { farmerId });
   try {
     const supabase = getSupabaseClient();
     let query = supabase
@@ -170,7 +158,7 @@ export async function getLedgerEntries(farmerId?: string) {
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error fetching ledger:', error);
+    console.error(error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch ledger',
@@ -179,7 +167,6 @@ export async function getLedgerEntries(farmerId?: string) {
 }
 
 export async function getMonthlySummaries(farmerId?: string) {
-  console.log('[MILKY-LOG] getMonthlySummaries()', { farmerId });
   try {
     const supabase = getSupabaseClient();
     let query = supabase
@@ -198,7 +185,7 @@ export async function getMonthlySummaries(farmerId?: string) {
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error fetching monthly summaries:', error);
+    console.error(error);
     return {
       success: false,
       error:
