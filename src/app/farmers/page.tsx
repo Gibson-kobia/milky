@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -22,8 +23,10 @@ import { useToast } from '@/lib/stores/ui';
 import { FarmerSchema, type FarmerFormData } from '@/lib/validations';
 import type { Farmer } from '@/types';
 import { addFarmer, fetchFarmers } from '@/lib/data';
+import { requireAuth } from '@/lib/auth';
 
 export default function FarmersPage() {
+  const router = useRouter();
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,6 +43,11 @@ export default function FarmersPage() {
   });
 
   useEffect(() => {
+    if (!requireAuth()) {
+      router.push('/login');
+      return;
+    }
+
     const loadFarmers = async () => {
       setIsLoading(true);
       try {
@@ -54,7 +62,7 @@ export default function FarmersPage() {
     };
 
     loadFarmers();
-  }, [error]);
+  }, [router, error]);
 
   const handleSubmit = async (data: FarmerFormData) => {
     try {
@@ -87,13 +95,23 @@ export default function FarmersPage() {
   const activeFarmers = farmers.filter((f) => !f.archived_at);
   const archivedFarmers = farmers.filter((f) => f.archived_at);
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-milk-green-50 to-white px-4 py-12">
+        <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-lg">
+          <p className="text-sm font-medium text-gray-700">Loading farmers...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-12">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Farmers</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Manage farmer information and delivery settings
+            Manage farmer information and delivery settings.
           </p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -107,7 +125,7 @@ export default function FarmersPage() {
             <DialogHeader>
               <DialogTitle>Add New Farmer</DialogTitle>
               <DialogDescription>
-                Add a new farmer to the milk collection system
+                Add a new farmer to the milk collection system.
               </DialogDescription>
             </DialogHeader>
 
@@ -197,7 +215,9 @@ export default function FarmersPage() {
                 className="flex items-center justify-between p-4 sm:p-6"
               >
                 <div className="flex-1">
-                  <p className="font-medium text-gray-900">{farmer.name}</p>
+                  <p className="font-medium text-gray-900 truncate">
+                    {farmer.name}
+                  </p>
                   <p className="text-sm text-gray-600">{farmer.phone}</p>
                   {farmer.notes && (
                     <p className="mt-1 text-xs text-gray-500">{farmer.notes}</p>
@@ -209,9 +229,9 @@ export default function FarmersPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" className="gap-1">
+                  <Button variant="ghost" size="sm" className="gap-1" onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <Edit2 className="h-4 w-4" />
-                    <span className="hidden sm:inline">Edit</span>
+                    <span className="hidden sm:inline">View</span>
                   </Button>
                   <Button
                     variant="ghost"
@@ -245,12 +265,6 @@ export default function FarmersPage() {
             ))}
           </div>
         </div>
-      )}
-
-      {isLoading && (
-        <Card className="p-6 text-center">
-          <p className="text-gray-600">Loading farmers…</p>
-        </Card>
       )}
     </div>
   );

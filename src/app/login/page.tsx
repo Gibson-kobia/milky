@@ -5,83 +5,41 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuthStore } from '@/lib/stores/auth';
 import { useToast } from '@/lib/stores/ui';
-import { useDebugStore } from '@/lib/stores/debug';
-import { validatePin, verifyPin } from '@/lib/utils';
-import { getStoredPinHash } from '@/lib/data';
+import { APP_PIN, isAuthenticated, signIn } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setAuthenticated, setPinSet } = useAuthStore();
-  const setLastError = useDebugStore((state) => state.setLastError);
   const { error } = useToast();
   const [pin, setPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const initialize = async () => {
-      console.log('[MILKY-LOG] LoginPage useEffect initialize');
-      try {
-        const storedHash = await getStoredPinHash();
-        console.log('[MILKY-LOG] LoginPage storedHash result', {
-          hasStoredHash: Boolean(storedHash),
-        });
-        setPinSet(Boolean(storedHash));
-
-        if (!storedHash) {
-          console.warn('[MILKY-LOG] LoginPage no stored PIN hash, redirecting to setup-pin');
-          router.push('/setup-pin');
-          return;
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        setLastError(message);
-      } finally {
-        setIsReady(true);
-      }
-    };
-
-    initialize();
-  }, [router, setPinSet, setLastError]);
+    if (isAuthenticated()) {
+      router.push('/');
+      return;
+    }
+    setIsReady(true);
+  }, [router]);
 
   const handleLogin = async () => {
-    console.log('[MILKY-LOG] LoginPage handleLogin start', { pinLength: pin.length });
-    if (!validatePin(pin)) {
+    if (pin.length !== 4) {
       error('PIN must be 4 digits');
       return;
     }
 
     setIsLoading(true);
-    try {
-      const storedHash = await getStoredPinHash();
-      console.log('[MILKY-LOG] LoginPage handleLogin storedHash', {
-        hasStoredHash: Boolean(storedHash),
-      });
-      if (!storedHash) {
-        console.error('[MILKY-LOG] CRITICAL: Settings table is empty or unreachable during login');
-        error('No PIN set. Redirecting to setup.');
-        router.push('/setup-pin');
-        return;
-      }
 
-      const isValid = await verifyPin(pin, storedHash);
-      if (isValid) {
-        setAuthenticated(true);
-        setPinSet(true);
-        router.push('/dashboard');
-      } else {
-        error('Invalid PIN');
-        setPin('');
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setLastError(message);
-      error(message || 'Unable to validate PIN. Please try again.');
-    } finally {
-      setIsLoading(false);
+    if (pin === APP_PIN) {
+      signIn();
+      router.push('/');
+      return;
     }
+
+    error('Invalid PIN');
+    setPin('');
+    setIsLoading(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -93,7 +51,7 @@ export default function LoginPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-milk-green-50 to-white px-4 py-12">
         <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-lg">
-          <p className="text-sm font-medium text-gray-700">Checking authentication…</p>
+          <p className="text-sm font-medium text-gray-700">Loading…</p>
         </div>
       </div>
     );
@@ -108,7 +66,7 @@ export default function LoginPage() {
               <span className="text-3xl font-bold text-white">M</span>
             </div>
           </div>
-          <CardTitle className="text-2xl">Welcome to Milky</CardTitle>
+          <CardTitle className="text-2xl">Login</CardTitle>
         </CardHeader>
 
         <CardContent>
@@ -138,18 +96,9 @@ export default function LoginPage() {
             >
               {isLoading ? 'Checking...' : 'Login'}
             </Button>
-
-            <button
-              type="button"
-              onClick={() => router.push('/setup-pin')}
-              className="w-full text-center text-sm text-milk-green-600 hover:text-milk-green-700 font-medium"
-            >
-              Setup new PIN
-            </button>
           </form>
-
           <p className="mt-6 text-center text-xs text-gray-600">
-            🥛 Milk collection & farmer payment system for Meru, Kenya
+            Use PIN: {APP_PIN}
           </p>
         </CardContent>
       </Card>
