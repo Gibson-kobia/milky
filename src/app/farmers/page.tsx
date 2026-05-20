@@ -62,7 +62,7 @@ export default function FarmersPage() {
     };
 
     loadFarmers();
-  }, [router, error]);
+  }, []);
 
   const handleSubmit = async (data: FarmerFormData) => {
     try {

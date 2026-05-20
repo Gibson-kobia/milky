@@ -54,7 +54,7 @@ export default function HomePage() {
     };
 
     loadData();
-  }, [router, error]);
+  }, []);
 
   const handleAddDelivery = async (farmerId: string, litres: number) => {
     try {
