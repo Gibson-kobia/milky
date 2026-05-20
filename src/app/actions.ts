@@ -8,6 +8,13 @@ export async function addMilkDelivery(
   deliveryType: 'morning' | 'evening',
   date: string
 ) {
+  console.log('[DEBUG-MILKY] addMilkDelivery()', {
+    farmerId,
+    litres,
+    deliveryType,
+    date,
+  });
+
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -27,7 +34,7 @@ export async function addMilkDelivery(
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error adding milk delivery:', error);
+    console.error('[DEBUG-MILKY] Error adding milk delivery:', error);
     return {
       success: false,
       error:
@@ -40,6 +47,7 @@ export async function updateMilkDelivery(
   deliveryId: string,
   litres: number
 ) {
+  console.log('[DEBUG-MILKY] updateMilkDelivery()', { deliveryId, litres });
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -56,7 +64,7 @@ export async function updateMilkDelivery(
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error updating milk delivery:', error);
+    console.error('[DEBUG-MILKY] Error updating milk delivery:', error);
     return {
       success: false,
       error:
@@ -66,6 +74,7 @@ export async function updateMilkDelivery(
 }
 
 export async function getTodayDeliveries(date: string) {
+  console.log('[DEBUG-MILKY] getTodayDeliveries()', { date });
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -77,7 +86,7 @@ export async function getTodayDeliveries(date: string) {
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error fetching deliveries:', error);
+    console.error('[DEBUG-MILKY] Error fetching deliveries:', error);
     return {
       success: false,
       error:
@@ -87,6 +96,7 @@ export async function getTodayDeliveries(date: string) {
 }
 
 export async function getFarmers() {
+  console.log('[DEBUG-MILKY] getFarmers()');
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -99,7 +109,7 @@ export async function getFarmers() {
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error fetching farmers:', error);
+    console.error('[DEBUG-MILKY] Error fetching farmers:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch farmers',
@@ -113,6 +123,7 @@ export async function addFarmer(
   eveningDeliveryEnabled: boolean,
   notes: string | null
 ) {
+  console.log('[DEBUG-MILKY] addFarmer()', { name, phone, eveningDeliveryEnabled });
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -132,7 +143,7 @@ export async function addFarmer(
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error adding farmer:', error);
+    console.error('[DEBUG-MILKY] Error adding farmer:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to add farmer',
@@ -141,6 +152,7 @@ export async function addFarmer(
 }
 
 export async function getLedgerEntries(farmerId?: string) {
+  console.log('[DEBUG-MILKY] getLedgerEntries()', { farmerId });
   try {
     const supabase = getSupabaseClient();
     let query = supabase
@@ -158,7 +170,7 @@ export async function getLedgerEntries(farmerId?: string) {
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error fetching ledger:', error);
+    console.error('[DEBUG-MILKY] Error fetching ledger:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch ledger',
@@ -167,6 +179,7 @@ export async function getLedgerEntries(farmerId?: string) {
 }
 
 export async function getMonthlySummaries(farmerId?: string) {
+  console.log('[DEBUG-MILKY] getMonthlySummaries()', { farmerId });
   try {
     const supabase = getSupabaseClient();
     let query = supabase
@@ -185,7 +198,7 @@ export async function getMonthlySummaries(farmerId?: string) {
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error fetching monthly summaries:', error);
+    console.error('[DEBUG-MILKY] Error fetching monthly summaries:', error);
     return {
       success: false,
       error:

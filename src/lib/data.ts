@@ -18,14 +18,19 @@ export const isBrowser = () => typeof window !== 'undefined';
 
 export const isOnline = () => isBrowser() && window.navigator.onLine;
 export async function getStoredPinHash(): Promise<string | null> {
+  console.log('[DEBUG-MILKY] getStoredPinHash() start');
   if (isBrowser()) {
     const localHash = localStorage.getItem('pin_hash');
+    console.log('[DEBUG-MILKY] getStoredPinHash localStorage hash found', {
+      hasLocalHash: Boolean(localHash),
+    });
     if (localHash) {
       return localHash;
     }
   }
 
   if (!supabase) {
+    console.warn('[DEBUG-MILKY] getStoredPinHash supabase unavailable');
     return null;
   }
 
@@ -36,23 +41,34 @@ export async function getStoredPinHash(): Promise<string | null> {
       .maybeSingle();
 
     if (error) {
-      console.error('Error loading settings pin hash:', error);
+      console.error('[DEBUG-MILKY] CRITICAL: Settings table unreachable', error);
       return null;
     }
 
-    return data?.pin_hash ?? null;
+    if (!data || !data.pin_hash) {
+      console.error(
+        '[DEBUG-MILKY] CRITICAL: Settings table is empty or unreachable',
+        { data }
+      );
+      return null;
+    }
+
+    return data.pin_hash;
   } catch (error) {
-    console.error('Error loading stored PIN hash:', error);
+    console.error('[DEBUG-MILKY] Error loading stored PIN hash:', error);
     return null;
   }
 }
 
 export async function saveStoredPinHash(hash: string) {
+  console.log('[DEBUG-MILKY] saveStoredPinHash() start');
   if (isBrowser()) {
     localStorage.setItem('pin_hash', hash);
+    console.log('[DEBUG-MILKY] saveStoredPinHash localStorage updated');
   }
 
   if (!supabase) {
+    console.warn('[DEBUG-MILKY] saveStoredPinHash supabase unavailable');
     return;
   }
 
@@ -63,9 +79,14 @@ export async function saveStoredPinHash(hash: string) {
       .maybeSingle();
 
     if (error) {
-      console.error('Error checking settings row:', error);
+      console.error('[DEBUG-MILKY] saveStoredPinHash error checking settings row:', error);
       return;
     }
+
+    console.log('[DEBUG-MILKY] saveStoredPinHash settings row lookup', {
+      rowFound: Boolean(data?.id),
+      data,
+    });
 
     if (data?.id) {
       await supabase.from('settings').update({ pin_hash: hash }).eq('id', data.id);
@@ -79,7 +100,7 @@ export async function saveStoredPinHash(hash: string) {
       });
     }
   } catch (error) {
-    console.error('Error saving PIN hash to settings:', error);
+    console.error('[DEBUG-MILKY] Error saving PIN hash to settings:', error);
   }
 }
 function convertDeliveryRow(row: Record<string, unknown>): MilkDelivery {

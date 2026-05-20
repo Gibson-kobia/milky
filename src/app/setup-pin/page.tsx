@@ -21,14 +21,18 @@ export default function SetupPinPage() {
 
   useEffect(() => {
     const initialize = async () => {
+      console.log('[DEBUG-MILKY] SetupPinPage(root) useEffect initialize');
       try {
         const storedHash = await getStoredPinHash();
+        console.log('[DEBUG-MILKY] SetupPinPage(root) storedHash result', {
+          hasStoredHash: Boolean(storedHash),
+        });
         if (storedHash) {
           router.push('/login');
           return;
         }
       } catch (err) {
-        console.error('Error checking PIN setup:', err);
+        console.error('[DEBUG-MILKY] SetupPinPage(root) error checking PIN setup:', err);
       } finally {
         setIsReady(true);
       }
@@ -39,6 +43,10 @@ export default function SetupPinPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[DEBUG-MILKY] SetupPinPage(root) handleSubmit', {
+      pinLength: pin.length,
+      pinConfirmLength: pinConfirm.length,
+    });
 
     if (!validatePin(pin)) {
       error('PIN must be 4 digits');
