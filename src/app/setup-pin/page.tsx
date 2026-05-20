@@ -21,10 +21,10 @@ export default function SetupPinPage() {
 
   useEffect(() => {
     const initialize = async () => {
-      console.log('[DEBUG-MILKY] SetupPinPage(root) useEffect initialize');
+      console.log('[MILKY-LOG] SetupPinPage(root) useEffect initialize');
       try {
         const storedHash = await getStoredPinHash();
-        console.log('[DEBUG-MILKY] SetupPinPage(root) storedHash result', {
+        console.log('[MILKY-LOG] SetupPinPage(root) storedHash result', {
           hasStoredHash: Boolean(storedHash),
         });
         if (storedHash) {
@@ -32,7 +32,7 @@ export default function SetupPinPage() {
           return;
         }
       } catch (err) {
-        console.error('[DEBUG-MILKY] SetupPinPage(root) error checking PIN setup:', err);
+        console.error('[MILKY-LOG] SetupPinPage(root) error checking PIN setup:', err);
       } finally {
         setIsReady(true);
       }
@@ -43,7 +43,7 @@ export default function SetupPinPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[DEBUG-MILKY] SetupPinPage(root) handleSubmit', {
+    console.log('[MILKY-LOG] SetupPinPage(root) handleSubmit', {
       pinLength: pin.length,
       pinConfirmLength: pinConfirm.length,
     });

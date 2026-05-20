@@ -20,21 +20,21 @@ export default function LoginPage() {
 
   useEffect(() => {
     const initialize = async () => {
-      console.log('[DEBUG-MILKY] LoginPage useEffect initialize');
+      console.log('[MILKY-LOG] LoginPage useEffect initialize');
       try {
         const storedHash = await getStoredPinHash();
-        console.log('[DEBUG-MILKY] LoginPage storedHash result', {
+        console.log('[MILKY-LOG] LoginPage storedHash result', {
           hasStoredHash: Boolean(storedHash),
         });
         setPinSet(Boolean(storedHash));
 
         if (!storedHash) {
-          console.warn('[DEBUG-MILKY] LoginPage no stored PIN hash, redirecting to setup-pin');
+          console.warn('[MILKY-LOG] LoginPage no stored PIN hash, redirecting to setup-pin');
           router.push('/setup-pin');
           return;
         }
       } catch (err) {
-        console.error('[DEBUG-MILKY] LoginPage error checking PIN setup:', err);
+        console.error('[MILKY-LOG] LoginPage error checking PIN setup:', err);
       } finally {
         setIsReady(true);
       }
@@ -44,7 +44,7 @@ export default function LoginPage() {
   }, [router, setPinSet]);
 
   const handleLogin = async () => {
-    console.log('[DEBUG-MILKY] LoginPage handleLogin start', { pinLength: pin.length });
+    console.log('[MILKY-LOG] LoginPage handleLogin start', { pinLength: pin.length });
     if (!validatePin(pin)) {
       error('PIN must be 4 digits');
       return;
@@ -53,11 +53,11 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const storedHash = await getStoredPinHash();
-      console.log('[DEBUG-MILKY] LoginPage handleLogin storedHash', {
+      console.log('[MILKY-LOG] LoginPage handleLogin storedHash', {
         hasStoredHash: Boolean(storedHash),
       });
       if (!storedHash) {
-        console.error('[DEBUG-MILKY] CRITICAL: Settings table is empty or unreachable during login');
+        console.error('[MILKY-LOG] CRITICAL: Settings table is empty or unreachable during login');
         error('No PIN set. Redirecting to setup.');
         router.push('/setup-pin');
         return;

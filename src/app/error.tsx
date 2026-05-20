@@ -6,13 +6,13 @@ interface ErrorProps {
 }
 
 export default function GlobalError({ error, reset }: ErrorProps) {
-  console.error('[DEBUG-MILKY] Global error boundary caught:', error);
+  console.error('[MILKY-LOG] Global error boundary caught:', error);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-red-50 px-4 py-12">
       <div className="w-full max-w-2xl rounded-3xl border border-red-200 bg-white p-8 shadow-xl">
         <h1 className="text-2xl font-semibold text-red-700">Something went wrong</h1>
-        <p className="mt-4 text-sm text-gray-700">[DEBUG-MILKY] {error.message}</p>
+        <p className="mt-4 text-sm text-gray-700">[MILKY-LOG] {error.message}</p>
         <pre className="mt-4 max-h-72 overflow-auto rounded-lg bg-gray-100 p-4 text-xs text-gray-800">
           {error.stack}
         </pre>

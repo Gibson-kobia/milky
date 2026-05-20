@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [deliveries, setDeliveries] = useState<MilkDelivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -37,6 +38,9 @@ export default function DashboardPage() {
         setFarmers(farmersData);
         setDeliveries(deliveriesData);
       } catch (err) {
+        setLoadError(
+          'Unable to load dashboard data. Please verify Supabase settings, network connectivity, and try again.'
+        );
         error('Failed to load dashboard data');
         console.error(err);
       } finally {
@@ -98,6 +102,23 @@ export default function DashboardPage() {
     .size;
   const estimatedProfit = calculateDailyProfit(totalLitres);
   const estimatedPayout = totalLitres * 55;
+
+  if (loadError) {
+    return (
+      <div className="space-y-6 pb-12">
+        <Card className="p-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white">
+            <Plus className="h-6 w-6" />
+          </div>
+          <h1 className="text-2xl font-semibold text-red-700">Dashboard Load Failed</h1>
+          <p className="mt-2 text-sm text-gray-600">{loadError}</p>
+          <Button onClick={() => router.refresh()} className="mt-6">
+            Retry
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   if (!isLoading && farmers.length === 0) {
     return (
