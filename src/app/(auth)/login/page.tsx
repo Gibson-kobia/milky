@@ -7,12 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/lib/stores/auth';
 import { useToast } from '@/lib/stores/ui';
+import { useDebugStore } from '@/lib/stores/debug';
 import { validatePin, verifyPin } from '@/lib/utils';
 import { getStoredPinHash } from '@/lib/data';
 
 export default function LoginPage() {
   const router = useRouter();
   const { setAuthenticated, setPinSet } = useAuthStore();
+  const setLastError = useDebugStore((state) => state.setLastError);
   const { error } = useToast();
   const [pin, setPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -34,14 +36,15 @@ export default function LoginPage() {
           return;
         }
       } catch (err) {
-        console.error('[MILKY-LOG] LoginPage error checking PIN setup:', err);
+        const message = err instanceof Error ? err.message : String(err);
+        setLastError(message);
       } finally {
         setIsReady(true);
       }
     };
 
     initialize();
-  }, [router, setPinSet]);
+  }, [router, setPinSet, setLastError]);
 
   const handleLogin = async () => {
     console.log('[MILKY-LOG] LoginPage handleLogin start', { pinLength: pin.length });
@@ -73,12 +76,9 @@ export default function LoginPage() {
         setPin('');
       }
     } catch (err) {
-      console.error(err);
-      error(
-        err instanceof Error
-          ? err.message
-          : 'Unable to validate PIN. Please try again.'
-      );
+      const message = err instanceof Error ? err.message : String(err);
+      setLastError(message);
+      error(message || 'Unable to validate PIN. Please try again.');
     } finally {
       setIsLoading(false);
     }

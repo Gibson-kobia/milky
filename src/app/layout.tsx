@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import '@/app/globals.css';
 import { ToastContainer } from '@/components/toast-container';
+import { DiagnosticOverlay } from '@/components/DiagnosticOverlay';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body className="bg-gray-50">
         {children}
         <ToastContainer />
+        <DiagnosticOverlay />
       </body>
     </html>
   );

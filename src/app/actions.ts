@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { debugLogError } from '@/lib/debug';
 
 export async function addMilkDelivery(
   farmerId: string,
@@ -34,7 +35,7 @@ export async function addMilkDelivery(
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error adding milk delivery:', error);
+    debugLogError(error, 'Error adding milk delivery');
     return {
       success: false,
       error:
@@ -64,7 +65,7 @@ export async function updateMilkDelivery(
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error updating milk delivery:', error);
+    debugLogError(error, 'Error updating milk delivery');
     return {
       success: false,
       error:
@@ -86,7 +87,7 @@ export async function getTodayDeliveries(date: string) {
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error fetching deliveries:', error);
+    debugLogError(error, 'Error fetching deliveries');
     return {
       success: false,
       error:
@@ -109,7 +110,7 @@ export async function getFarmers() {
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error fetching farmers:', error);
+    debugLogError(error, 'Error fetching farmers');
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch farmers',
@@ -143,7 +144,7 @@ export async function addFarmer(
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error adding farmer:', error);
+    debugLogError(error, 'Error adding farmer');
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to add farmer',
@@ -170,7 +171,7 @@ export async function getLedgerEntries(farmerId?: string) {
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error fetching ledger:', error);
+    debugLogError(error, 'Error fetching ledger');
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch ledger',
@@ -198,7 +199,7 @@ export async function getMonthlySummaries(farmerId?: string) {
 
     return { success: true, data };
   } catch (error) {
-    console.error('[MILKY-LOG] Error fetching monthly summaries:', error);
+    debugLogError(error, 'Error fetching monthly summaries');
     return {
       success: false,
       error:
