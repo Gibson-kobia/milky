@@ -7,14 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/lib/stores/auth';
 import { useToast } from '@/lib/stores/ui';
-import { validatePin, verifyPin } from '@/lib/utils';
-import { getStoredPinHash } from '@/lib/data';
+import { validatePin, hashPin } from '@/lib/utils';
+import { getStoredPinHash, saveStoredPinHash } from '@/lib/data';
 
-export default function LoginPage() {
+export default function SetupPinPage() {
   const router = useRouter();
   const { setAuthenticated, setPinSet } = useAuthStore();
-  const { error } = useToast();
+  const { error, success } = useToast();
   const [pin, setPin] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
@@ -22,10 +23,8 @@ export default function LoginPage() {
     const initialize = async () => {
       try {
         const storedHash = await getStoredPinHash();
-        setPinSet(Boolean(storedHash));
-
-        if (!storedHash) {
-          router.push('/setup-pin');
+        if (storedHash) {
+          router.push('/login');
           return;
         }
       } catch (err) {
@@ -36,54 +35,47 @@ export default function LoginPage() {
     };
 
     initialize();
-  }, [router, setPinSet]);
+  }, [router]);
 
-  const handleLogin = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!validatePin(pin)) {
       error('PIN must be 4 digits');
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const storedHash = await getStoredPinHash();
-      if (!storedHash) {
-        error('No PIN set. Redirecting to setup.');
-        router.push('/setup-pin');
-        return;
-      }
+    if (pin !== pinConfirm) {
+      error('PINs do not match');
+      return;
+    }
 
-      const isValid = await verifyPin(pin, storedHash);
-      if (isValid) {
-        setAuthenticated(true);
-        setPinSet(true);
-        router.push('/dashboard');
-      } else {
-        error('Invalid PIN');
-        setPin('');
-      }
+    setIsLoading(true);
+
+    try {
+      const hash = await hashPin(pin);
+      await saveStoredPinHash(hash);
+      setPinSet(true);
+      setAuthenticated(true);
+      success('PIN setup complete. Redirecting to dashboard.');
+      router.push('/dashboard');
     } catch (err) {
       console.error(err);
       error(
         err instanceof Error
           ? err.message
-          : 'Unable to validate PIN. Please try again.'
+          : 'Failed to create PIN. Please try again.'
       );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await handleLogin();
-  };
-
   if (!isReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-milk-green-50 to-white px-4 py-12">
         <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-lg">
-          <p className="text-sm font-medium text-gray-700">Checking authentication…</p>
+          <p className="text-sm font-medium text-gray-700">Checking setup state…</p>
         </div>
       </div>
     );
@@ -98,14 +90,14 @@ export default function LoginPage() {
               <span className="text-3xl font-bold text-white">M</span>
             </div>
           </div>
-          <CardTitle className="text-2xl">Welcome to Milky</CardTitle>
+          <CardTitle className="text-2xl">Setup PIN</CardTitle>
         </CardHeader>
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enter 4-Digit PIN
+                Create 4-Digit PIN
               </label>
               <Input
                 type="password"
@@ -121,26 +113,35 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={pin.length !== 4 || isLoading}
-            >
-              {isLoading ? 'Checking...' : 'Login'}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Confirm PIN
+              </label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                value={pinConfirm}
+                onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, ''))}
+                placeholder="••••"
+                className="text-center text-2xl tracking-widest"
+                disabled={isLoading}
+              />
+            </div>
+
+            <Button type="submit" className="w-full" disabled={pin.length !== 4 || pinConfirm.length !== 4 || isLoading}>
+              {isLoading ? 'Creating PIN...' : 'Create PIN'}
             </Button>
 
             <button
               type="button"
-              onClick={() => router.push('/setup-pin')}
-              className="w-full text-center text-sm text-milk-green-600 hover:text-milk-green-700 font-medium"
+              onClick={() => router.push('/login')}
+              className="w-full text-center text-sm text-gray-600 hover:text-gray-700 font-medium"
             >
-              Setup new PIN
+              Already have a PIN? Login
             </button>
           </form>
-
-          <p className="mt-6 text-center text-xs text-gray-600">
-            🥛 Milk collection & farmer payment system for Meru, Kenya
-          </p>
         </CardContent>
       </Card>
     </div>

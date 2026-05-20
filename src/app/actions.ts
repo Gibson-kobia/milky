@@ -1,6 +1,6 @@
 'use server';
 
-import { supabase } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 
 export async function addMilkDelivery(
   farmerId: string,
@@ -9,6 +9,7 @@ export async function addMilkDelivery(
   date: string
 ) {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('milk_deliveries')
       .insert({
@@ -40,6 +41,7 @@ export async function updateMilkDelivery(
   litres: number
 ) {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('milk_deliveries')
       .update({
@@ -65,6 +67,7 @@ export async function updateMilkDelivery(
 
 export async function getTodayDeliveries(date: string) {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('milk_deliveries')
       .select('*')
@@ -85,6 +88,7 @@ export async function getTodayDeliveries(date: string) {
 
 export async function getFarmers() {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('farmers')
       .select('*')
@@ -110,6 +114,7 @@ export async function addFarmer(
   notes: string | null
 ) {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('farmers')
       .insert({
@@ -137,6 +142,7 @@ export async function addFarmer(
 
 export async function getLedgerEntries(farmerId?: string) {
   try {
+    const supabase = getSupabaseClient();
     let query = supabase
       .from('ledger_entries')
       .select('*')
@@ -162,6 +168,7 @@ export async function getLedgerEntries(farmerId?: string) {
 
 export async function getMonthlySummaries(farmerId?: string) {
   try {
+    const supabase = getSupabaseClient();
     let query = supabase
       .from('monthly_summaries')
       .select('*')

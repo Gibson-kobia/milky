@@ -10,6 +10,7 @@ import { FormField } from '@/components/ui/form';
 import { useToast } from '@/lib/stores/ui';
 import { SettingsSchema, type SettingsFormData } from '@/lib/validations';
 import { hashPin } from '@/lib/utils';
+import { saveStoredPinHash } from '@/lib/data';
 
 export default function SettingsPage() {
   const { success, error } = useToast();
@@ -53,9 +54,10 @@ export default function SettingsPage() {
 
     try {
       const hash = await hashPin(newPin);
-      localStorage.setItem('pin_hash', hash);
+      await saveStoredPinHash(hash);
       success('PIN changed successfully');
     } catch (err) {
+      console.error(err);
       error('Failed to change PIN');
     }
   };

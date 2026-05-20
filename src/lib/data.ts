@@ -17,7 +17,71 @@ import type { Farmer, MilkDelivery } from '@/types';
 export const isBrowser = () => typeof window !== 'undefined';
 
 export const isOnline = () => isBrowser() && window.navigator.onLine;
+export async function getStoredPinHash(): Promise<string | null> {
+  if (isBrowser()) {
+    const localHash = localStorage.getItem('pin_hash');
+    if (localHash) {
+      return localHash;
+    }
+  }
 
+  if (!supabase) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('settings')
+      .select('pin_hash')
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error loading settings pin hash:', error);
+      return null;
+    }
+
+    return data?.pin_hash ?? null;
+  } catch (error) {
+    console.error('Error loading stored PIN hash:', error);
+    return null;
+  }
+}
+
+export async function saveStoredPinHash(hash: string) {
+  if (isBrowser()) {
+    localStorage.setItem('pin_hash', hash);
+  }
+
+  if (!supabase) {
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('settings')
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error checking settings row:', error);
+      return;
+    }
+
+    if (data?.id) {
+      await supabase.from('settings').update({ pin_hash: hash }).eq('id', data.id);
+    } else {
+      await supabase.from('settings').insert({
+        shop_name: 'Meru Milk Collection',
+        owner_name: 'Meru Manager',
+        buying_rate: 55,
+        selling_rate: 70,
+        pin_hash: hash,
+      });
+    }
+  } catch (error) {
+    console.error('Error saving PIN hash to settings:', error);
+  }
+}
 function convertDeliveryRow(row: Record<string, unknown>): MilkDelivery {
   return {
     id: String(row.id),
@@ -37,7 +101,7 @@ function convertDeliveryRow(row: Record<string, unknown>): MilkDelivery {
 export async function fetchFarmers() {
   const localFarmers = await getLocalFarmers();
 
-  if (!isOnline()) {
+  if (!isOnline() || !supabase) {
     return localFarmers;
   }
 
@@ -68,7 +132,7 @@ export async function fetchFarmers() {
 export async function fetchDeliveriesByDate(date: string) {
   const localDeliveries = await getLocalDeliveries(date);
 
-  if (!isOnline()) {
+  if (!isOnline() || !supabase) {
     return localDeliveries;
   }
 
@@ -229,7 +293,7 @@ export async function updateMilkDelivery(deliveryId: string, litres: number) {
 }
 
 export async function syncPendingQueue() {
-  if (!isOnline()) {
+  if (!isOnline() || !supabase) {
     return;
   }
 
