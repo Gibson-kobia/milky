@@ -50,6 +50,20 @@ export const getYesterdayString = () => {
   return yesterday.toISOString().split('T')[0];
 };
 
+export const getDateOffsetString = (dateString: string, offset: number) => {
+  const date = new Date(dateString);
+  date.setDate(date.getDate() + offset);
+  return date.toISOString().split('T')[0];
+};
+
+export const formatShortDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('en-KE', {
+    day: 'numeric',
+    month: 'short',
+  }).format(date);
+};
+
 export const isToday = (dateString: string) => {
   return dateString === getTodayString();
 };
