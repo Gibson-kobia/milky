@@ -4,16 +4,14 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { FastEntryBoard } from '@/components/fast-entry-board';
 import { DailyDashboard } from '@/components/daily-dashboard';
 import { useToast } from '@/lib/stores/ui';
 import {
-  getFormattedDate,
+  formatDateHeading,
   getDateOffsetString,
   getMonthStartString,
   getCurrentDate,
-  isToday,
 } from '@/lib/utils';
 import type { Farmer, MilkDelivery } from '@/types';
 import {
@@ -56,13 +54,11 @@ export default function HomePage() {
         setFarmers(farmersData);
         setDeliveries(deliveriesData);
 
-        // Keep selected date from query param if present, otherwise default to today
         const paramDate = searchParams?.get('date');
         if (paramDate) {
           setSelectedDate(paramDate);
         } else {
           setSelectedDate(today);
-          // update URL to include date for consistency
           router.replace(`/?date=${today}`);
         }
       } catch (err) {
@@ -80,16 +76,14 @@ export default function HomePage() {
     loadData();
     // Only run on mount - searchParams is reactive elsewhere when user navigates
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [error]);
+  }, [error, searchParams]);
 
-  // Keep selectedDate in sync with browser navigation
   useEffect(() => {
     const param = searchParams?.get('date');
     if (param && param !== selectedDate) {
       setSelectedDate(param);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, selectedDate]);
 
   const handleAddDelivery = async (
     farmerId: string,
@@ -146,7 +140,6 @@ export default function HomePage() {
     }
   };
 
-  const today = getCurrentDate();
   const monthStart = getMonthStartString();
   const previousDate = getDateOffsetString(selectedDate, -1);
   const nextDate = getDateOffsetString(selectedDate, 1);
@@ -171,7 +164,7 @@ export default function HomePage() {
   const farmersDelivered = new Set(
     selectedDeliveries.map((d) => d.farmer_id)
   ).size;
-  const selectedPayout = totalLitres * 55;
+  
   const sortedFarmers = useMemo(() => {
     const dateYesterday = getDateOffsetString(selectedDate, -1);
 
@@ -226,75 +219,40 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Milky</h1>
-          <p className="mt-1 max-w-xl text-sm text-gray-600">
-            A calm, fast screen for daily milk recording.
-          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => router.push('/farmers')}>
-            Manage Farmers
+        <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleDateChange(previousDate)}
+            disabled={!canGoBack}
+            aria-label="Previous day"
+          >
+            ←
           </Button>
-          <Button variant="outline" onClick={() => router.push('/reports')}>
-            Reports
-          </Button>
-          <Button variant="outline" onClick={() => router.push('/settings')}>
-            Settings
+          <div className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Selected date</p>
+            <h2 className="text-lg font-semibold text-gray-900">{formatDateHeading(selectedDate)}</h2>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleDateChange(nextDate)}
+            disabled={!canGoForward}
+            aria-label="Next day"
+          >
+            →
           </Button>
         </div>
       </div>
 
-      <Card className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Recording date
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleDateChange(previousDate)}
-                disabled={!canGoBack}
-              >
-                ← Yesterday
-              </Button>
-              <Input
-                type="date"
-                value={selectedDate}
-                min={monthStart}
-                max={today}
-                onChange={(event) => handleDateChange(event.target.value)}
-                className="max-w-[180px]"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleDateChange(nextDate)}
-                disabled={!canGoForward}
-              >
-                Tomorrow →
-              </Button>
-            </div>
-          </div>
-          <div className="rounded-3xl bg-milk-green-50 p-4 text-sm text-milk-green-900 sm:text-right">
-            <p className="font-medium">
-              {isToday(selectedDate) ? 'Today' : getFormattedDate(selectedDate)}
-            </p>
-            <p className="mt-1 text-xs text-gray-600">
-              Select a day and enter litres quickly.
-            </p>
-          </div>
-        </div>
-      </Card>
-
       <DailyDashboard
-        dateLabel={isToday(selectedDate) ? 'Today' : getFormattedDate(selectedDate)}
+        dateLabel={formatDateHeading(selectedDate)}
         todayLitres={totalLitres}
         todayFarmers={farmersDelivered}
-        todayPayout={selectedPayout}
       />
 
       {loadError ? (

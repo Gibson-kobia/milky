@@ -1,24 +1,24 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Download, FileText } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, ArrowRight, Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   calculateDailyProfit,
   calculateProfit,
   formatCurrency,
   formatDate,
+  formatDateHeading,
   formatMonthYear,
   getTodayString,
+  getDateOffsetString,
+  isValidIsoDate,
 } from '@/lib/utils';
-import {
-  fetchDailyAdvanceAggregates,
-  fetchDailyDeliveryAggregates,
-  fetchFarmers,
-} from '@/lib/data';
+import { fetchDailyCollectionAggregates, fetchFarmers } from '@/lib/data';
 import type { Farmer } from '@/types';
 
 interface DailySummary {
@@ -26,12 +26,15 @@ interface DailySummary {
   totalLitres: number;
   totalFarmers: number;
   totalAdvances: number;
+  totalPayout: number;
 }
 
 export default function ReportsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayString());
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -43,26 +46,26 @@ export default function ReportsPage() {
   }, []);
 
   useEffect(() => {
+    const paramDate = searchParams?.get('date');
+    if (paramDate && isValidIsoDate(paramDate)) {
+      setSelectedDate(paramDate);
+    } else {
+      setSelectedDate(today);
+      router.replace(`/reports?date=${today}`);
+    }
+  }, [router, searchParams, today]);
+
+  useEffect(() => {
     const loadReports = async () => {
       setIsLoading(true);
       try {
-        const [farmersData, deliveriesData, advancesData] = await Promise.all([
+        const [farmersData, collectionData] = await Promise.all([
           fetchFarmers(),
-          fetchDailyDeliveryAggregates(windowStart, today),
-          fetchDailyAdvanceAggregates(windowStart, today),
+          fetchDailyCollectionAggregates(windowStart, today),
         ]);
 
-        const advanceMap = new Map(
-          advancesData.map((item) => [item.day, item.totalAdvances])
-        );
-
         setFarmers(farmersData);
-        setDailySummaries(
-          deliveriesData.map((item) => ({
-            ...item,
-            totalAdvances: advanceMap.get(item.day) ?? 0,
-          }))
-        );
+        setDailySummaries(collectionData);
       } catch (err) {
         setLoadError('Unable to load report data. Check your database connection and try again.');
         console.error(err);
@@ -73,6 +76,11 @@ export default function ReportsPage() {
 
     loadReports();
   }, [today, windowStart]);
+
+  const selectedSummary = useMemo(
+    () => dailySummaries.find((summary) => summary.day === selectedDate) ?? null,
+    [dailySummaries, selectedDate]
+  );
 
   const last7DailySummaries = useMemo(() => {
     return dailySummaries.slice(0, 7).map((summary) => ({
@@ -137,15 +145,78 @@ export default function ReportsPage() {
   }, [dailySummaries]);
 
   const activeFarmers = farmers.filter((farmer) => farmer.active).length;
+  const previousDate = getDateOffsetString(selectedDate, -1);
+  const nextDate = getDateOffsetString(selectedDate, 1);
+  const canGoBack = previousDate >= windowStart;
+  const canGoForward = nextDate <= today;
+
+  const handleDateChange = (value: string) => {
+    if (!isValidIsoDate(value)) return;
+    setSelectedDate(value);
+    router.push(`/reports?date=${value}`);
+  };
 
   return (
     <div className="space-y-6 pb-12">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Daily and monthly collection summaries for your milk business.
-        </p>
+      <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reports</p>
+          <h1 className="mt-2 text-3xl font-semibold text-gray-900">{formatDateHeading(selectedDate)}</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleDateChange(previousDate)}
+            disabled={!canGoBack}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <Input
+            type="date"
+            value={selectedDate}
+            min={windowStart}
+            max={today}
+            onChange={(event) => handleDateChange(event.target.value)}
+            className="max-w-[180px]"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleDateChange(nextDate)}
+            disabled={!canGoForward}
+          >
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
+
+      {selectedSummary ? (
+        <Card className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="grid gap-4 sm:grid-cols-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Litres</p>
+              <p className="mt-2 text-2xl font-semibold text-gray-900">{selectedSummary.totalLitres}L</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Farmers</p>
+              <p className="mt-2 text-2xl font-semibold text-gray-900">{selectedSummary.totalFarmers}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Advances</p>
+              <p className="mt-2 text-2xl font-semibold text-gray-900">{formatCurrency(selectedSummary.totalAdvances)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Payout</p>
+              <p className="mt-2 text-2xl font-semibold text-milk-green-600">{formatCurrency(selectedSummary.totalPayout)}</p>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <Card className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-700">No summary available for the selected date.</p>
+        </Card>
+      )}
 
       <Tabs defaultValue="daily">
         <TabsList>
@@ -237,9 +308,6 @@ export default function ReportsPage() {
         <TabsContent value="farmerReports" className="mt-6 space-y-3">
           <Card className="p-6">
             <div className="space-y-3">
-              <p className="text-gray-700">
-                Your farmer statement area shows active producers and payment readiness.
-              </p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-2xl border border-gray-200 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">Active farmers</p>

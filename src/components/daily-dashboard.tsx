@@ -1,6 +1,6 @@
-import { Users, Droplets, Package } from 'lucide-react';
+import { Users, Droplets } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { formatCurrency, formatLitres } from '@/lib/utils';
+import { formatLitres } from '@/lib/utils';
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -32,14 +32,12 @@ interface DailyDashboardProps {
   dateLabel: string;
   todayLitres: number;
   todayFarmers: number;
-  todayPayout: number;
 }
 
 export function DailyDashboard({
   dateLabel,
   todayLitres,
   todayFarmers,
-  todayPayout,
 }: DailyDashboardProps) {
   return (
     <div className="space-y-4">
@@ -49,26 +47,18 @@ export function DailyDashboard({
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               {dateLabel}
             </p>
-            <p className="mt-1 text-sm text-gray-600">
-              Fast milk entry for the selected day.
-            </p>
           </div>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <StatCard
             icon={<Droplets className="h-5 w-5" />}
-            label="Litres"
+            label="Total Litres Collected Today"
             value={formatLitres(todayLitres)}
           />
           <StatCard
             icon={<Users className="h-5 w-5" />}
-            label="Farmers"
+            label="Farmers Delivered Today"
             value={todayFarmers.toString()}
-          />
-          <StatCard
-            icon={<Package className="h-5 w-5" />}
-            label="Payout"
-            value={formatCurrency(todayPayout)}
           />
         </div>
       </div>

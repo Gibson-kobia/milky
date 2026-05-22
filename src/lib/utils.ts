@@ -60,7 +60,11 @@ export const formatDisplayDate = (dateString: string) => {
   return format(date, 'd MMM yyyy');
 };
 
-export const getFormattedDate = formatDisplayDate;
+export const formatDateHeading = (dateString: string) => {
+  const date = parseISO(dateString);
+  if (!isValid(date)) return dateString;
+  return format(date, 'dd MMMM yyyy');
+};
 
 export const formatShortDate = (dateString: string) => {
   const date = parseISO(dateString);
@@ -70,6 +74,11 @@ export const formatShortDate = (dateString: string) => {
 
 export const isToday = (dateString: string) => {
   return dateString === getTodayString();
+};
+
+export const isValidIsoDate = (dateString: string) => {
+  const date = parseISO(dateString);
+  return isValid(date) && format(date, 'yyyy-MM-dd') === dateString;
 };
 
 export const isWithin24Hours = (dateString: string) => {

@@ -146,6 +146,49 @@ export interface DailyAdvanceAggregate {
   totalAdvances: number;
 }
 
+export interface DailyCollectionSummary {
+  day: string;
+  totalLitres: number;
+  totalFarmers: number;
+  totalAdvances: number;
+  totalPayout: number;
+}
+
+export async function fetchDailyCollectionAggregates(
+  startDate: string,
+  endDate: string
+): Promise<DailyCollectionSummary[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('daily_collection_summary')
+    .select('*')
+    .gte('day', startDate)
+    .lte('day', endDate)
+    .order('day', { ascending: false });
+
+  if (error || !data) return [];
+  const rows = data as Record<string, unknown>[];
+  return rows.map((row) => ({
+    day: String(row.day),
+    totalLitres:
+      typeof row.total_litres === 'string'
+        ? parseFloat(row.total_litres)
+        : Number(row.total_litres),
+    totalFarmers:
+      typeof row.total_farmers === 'string'
+        ? parseFloat(row.total_farmers)
+        : Number(row.total_farmers),
+    totalAdvances:
+      typeof row.total_advances === 'string'
+        ? parseFloat(row.total_advances)
+        : Number(row.total_advances),
+    totalPayout:
+      typeof row.total_payout === 'string'
+        ? parseFloat(row.total_payout)
+        : Number(row.total_payout),
+  }));
+}
+
 export async function fetchDailyDeliveryAggregates(
   startDate: string,
   endDate: string
@@ -301,6 +344,60 @@ export async function saveMilkDelivery(
 }
 
 // Add ledger/advance insert helper
+export function convertAdvanceRow(row: Record<string, unknown>) {
+  return {
+    id: String(row.id),
+    farmer_id: String(row.farmer_id),
+    amount:
+      typeof row.amount === 'string' ? parseFloat(row.amount) : Number(row.amount),
+    date: String(row.date),
+    note: row.note ? String(row.note) : null,
+    created_at: String(row.created_at),
+    created_by: row.created_by ? String(row.created_by) : null,
+  };
+}
+
+export async function fetchAdvancesForFarmer(
+  farmerId: string,
+  startDate: string,
+  endDate: string
+) {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('advances')
+    .select('*')
+    .eq('farmer_id', farmerId)
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: false });
+
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(convertAdvanceRow);
+}
+
+export async function addAdvance(
+  farmerId: string,
+  amount: number,
+  date: string,
+  note: string | null = null
+) {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('advances')
+    .insert({
+      farmer_id: farmerId,
+      amount,
+      date,
+      note,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return convertAdvanceRow(data as Record<string, unknown>);
+}
+
 export async function addLedgerEntry(
   farmerId: string | null,
   entryType: string,

@@ -76,9 +76,11 @@ export async function clearAllData() {
   try {
     const supabase = getSupabaseClient();
 
-    await supabase.from('ledger_entries').delete();
-    await supabase.from('payments').delete();
-    await supabase.from('milk_deliveries').delete();
+    // `truncate` is not present in the typed Postgrest client; cast to any
+    await (supabase.from('ledger_entries') as any).truncate();
+    await (supabase.from('payments') as any).truncate();
+    await (supabase.from('milk_deliveries') as any).truncate();
+    await (supabase.from('advances') as any).truncate();
 
     return { success: true };
   } catch (error) {

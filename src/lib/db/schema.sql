@@ -35,6 +35,20 @@ CREATE INDEX idx_milk_deliveries_farmer ON milk_deliveries(farmer_id);
 CREATE INDEX idx_milk_deliveries_date ON milk_deliveries(date);
 CREATE INDEX idx_milk_deliveries_created_at ON milk_deliveries(created_at);
 
+-- Advances table
+CREATE TABLE IF NOT EXISTS advances (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farmer_id UUID NOT NULL REFERENCES farmers(id),
+  amount DECIMAL(12,2) NOT NULL,
+  date DATE NOT NULL,
+  note TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_by UUID
+);
+
+CREATE INDEX idx_advances_farmer ON advances(farmer_id);
+CREATE INDEX idx_advances_date ON advances(date);
+
 -- Ledger entries table (immutable transaction log)
 CREATE TABLE IF NOT EXISTS ledger_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -134,6 +148,28 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Server-side aggregates for milk and advances
+CREATE VIEW IF NOT EXISTS daily_collection_summary AS
+SELECT
+  COALESCE(md.day, a.day) AS day,
+  COALESCE(md.total_litres, 0) AS total_litres,
+  COALESCE(md.total_farmers, 0) AS total_farmers,
+  COALESCE(a.total_advances, 0) AS total_advances,
+  (COALESCE(md.total_litres, 0) * COALESCE(s.buying_rate, 55.00) - COALESCE(a.total_advances, 0)) AS total_payout
+FROM (
+  SELECT date AS day, SUM(litres) AS total_litres, COUNT(DISTINCT farmer_id) AS total_farmers
+  FROM milk_deliveries
+  GROUP BY date
+) md
+FULL OUTER JOIN (
+  SELECT date AS day, SUM(amount) AS total_advances
+  FROM advances
+  GROUP BY date
+) a USING (day)
+CROSS JOIN LATERAL (
+  SELECT buying_rate FROM settings LIMIT 1
+) s;
 
 -- Triggers for updated_at
 CREATE TRIGGER update_milk_deliveries_updated_at
