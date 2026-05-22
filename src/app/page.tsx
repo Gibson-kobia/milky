@@ -7,11 +7,16 @@ import { Card } from '@/components/ui/card';
 import { FastEntryBoard } from '@/components/fast-entry-board';
 import { DailyDashboard } from '@/components/daily-dashboard';
 import { useToast } from '@/lib/stores/ui';
-import { getTodayString, calculateDailyProfit } from '@/lib/utils';
+import {
+  calculateDailyProfit,
+  calculateProfit,
+  getMonthStartString,
+  getTodayString,
+} from '@/lib/utils';
 import type { Farmer, MilkDelivery } from '@/types';
 import {
+  fetchDeliveriesInRange,
   fetchFarmers,
-  fetchDeliveriesByDate,
   saveMilkDelivery,
   updateMilkDelivery,
 } from '@/lib/data';
@@ -36,15 +41,18 @@ export default function HomePage() {
       setIsLoading(true);
       try {
         const today = getTodayString();
+        const monthStart = getMonthStartString();
         const [farmersData, deliveriesData] = await Promise.all([
           fetchFarmers(),
-          fetchDeliveriesByDate(today),
+          fetchDeliveriesInRange(monthStart, today),
         ]);
 
         setFarmers(farmersData);
         setDeliveries(deliveriesData);
       } catch (err) {
-        setLoadError('Unable to load data. Please check your Supabase settings and try again.');
+        setLoadError(
+          'Unable to load data. Please check your Supabase settings and try again.'
+        );
         error('Failed to load data');
         console.error(err);
       } finally {
@@ -54,7 +62,7 @@ export default function HomePage() {
     };
 
     loadData();
-  }, []);
+  }, [error, router]);
 
   const handleAddDelivery = async (farmerId: string, litres: number) => {
     try {
@@ -69,7 +77,9 @@ export default function HomePage() {
       setDeliveries((prev) => [
         ...prev.filter(
           (d) =>
-            !(d.farmer_id === farmerId && d.date === today && d.delivery_type === 'morning')
+            !(d.farmer_id === farmerId &&
+              d.date === today &&
+              d.delivery_type === 'morning')
         ),
         newDelivery,
       ]);
@@ -97,11 +107,19 @@ export default function HomePage() {
   };
 
   const today = getTodayString();
-  const todayDeliveries = deliveries.filter((d) => d.date === today);
+  const todayDeliveries = deliveries.filter(
+    (d) => d.date === today && d.delivery_type === 'morning'
+  );
   const totalLitres = todayDeliveries.reduce((sum, d) => sum + d.litres, 0);
-  const farmersDelivered = new Set(todayDeliveries.map((d) => d.farmer_id)).size;
+  const farmersDelivered = new Set(
+    todayDeliveries.map((d) => d.farmer_id)
+  ).size;
+  const monthLitres = deliveries.reduce((sum, d) => sum + d.litres, 0);
+  const activeFarmers = farmers.filter((farmer) => farmer.active).length;
   const estimatedProfit = calculateDailyProfit(totalLitres);
   const estimatedPayout = totalLitres * 55;
+  const monthEstimatedProfit = calculateProfit(monthLitres, 55, 70);
+  const monthPayout = monthLitres * 55;
 
   if (!isReady) {
     return (
@@ -119,7 +137,7 @@ export default function HomePage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Milky</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Fast milk collection, farmer tracking, and daily profit estimates.
+            Fast milk collection, farmer tracking, and operational delivery reporting.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -134,10 +152,14 @@ export default function HomePage() {
       </div>
 
       <DailyDashboard
-        totalLitres={totalLitres}
-        totalFarmers={farmersDelivered}
-        estimatedProfit={estimatedProfit}
-        estimatedPayout={estimatedPayout}
+        todayLitres={totalLitres}
+        todayFarmers={farmersDelivered}
+        todayProfit={estimatedProfit}
+        todayPayout={estimatedPayout}
+        monthLitres={monthLitres}
+        monthPayout={monthPayout}
+        monthProfit={monthEstimatedProfit}
+        activeFarmers={activeFarmers}
       />
 
       {loadError ? (
@@ -148,13 +170,20 @@ export default function HomePage() {
           </Button>
         </Card>
       ) : (
-        <FastEntryBoard
-          farmers={farmers}
-          deliveries={deliveries}
-          onAddDelivery={handleAddDelivery}
-          onUpdateDelivery={handleUpdateDelivery}
-          isLoading={isLoading}
-        />
+        <>
+          <FastEntryBoard
+            farmers={farmers}
+            deliveries={deliveries}
+            onAddDelivery={handleAddDelivery}
+            onUpdateDelivery={handleUpdateDelivery}
+            isLoading={isLoading}
+          />
+          {!isLoading && todayDeliveries.length === 0 && (
+            <Card className="p-6 text-center">
+              <p className="text-gray-700">No collections recorded yet</p>
+            </Card>
+          )}
+        </>
       )}
 
       <Card className="p-4 sm:p-6">

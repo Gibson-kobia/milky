@@ -1,4 +1,9 @@
-import type { Farmer, MilkDelivery } from '@/types';
+import type {
+  Farmer,
+  LedgerEntry,
+  MilkDelivery,
+  Payment,
+} from '@/types';
 import { getSupabaseClient } from '@/lib/supabase/client';
 
 export const isBrowser = () => typeof window !== 'undefined';
@@ -14,6 +19,37 @@ function convertDeliveryRow(row: Record<string, unknown>): MilkDelivery {
     delivery_type: String(row.delivery_type) as MilkDelivery['delivery_type'],
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
+    created_by: row.created_by ? String(row.created_by) : null,
+  };
+}
+
+function convertLedgerEntryRow(row: Record<string, unknown>): LedgerEntry {
+  return {
+    id: String(row.id),
+    farmer_id: row.farmer_id ? String(row.farmer_id) : '',
+    entry_type: String(row.entry_type) as LedgerEntry['entry_type'],
+    amount_kes:
+      typeof row.amount_kes === 'string'
+        ? parseFloat(row.amount_kes)
+        : Number(row.amount_kes),
+    description: row.description ? String(row.description) : null,
+    created_at: String(row.created_at),
+    created_by: row.created_by ? String(row.created_by) : null,
+    transaction_date: String(row.transaction_date),
+    reference_id: row.reference_id ? String(row.reference_id) : null,
+  };
+}
+
+function convertPaymentRow(row: Record<string, unknown>): Payment {
+  return {
+    id: String(row.id),
+    farmer_id: String(row.farmer_id),
+    amount:
+      typeof row.amount === 'string' ? parseFloat(row.amount) : Number(row.amount),
+    method: String(row.method) as Payment['method'],
+    date: String(row.date),
+    notes: row.notes ? String(row.notes) : null,
+    created_at: String(row.created_at),
     created_by: row.created_by ? String(row.created_by) : null,
   };
 }
@@ -56,9 +92,25 @@ export async function saveStoredPinHash(hash: string) {
 
 export async function fetchFarmers(): Promise<Farmer[]> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase.from('farmers').select('*').is('archived_at', null).order('name');
+  const { data, error } = await supabase
+    .from('farmers')
+    .select('*')
+    .is('archived_at', null)
+    .order('name');
   if (error || !data) return [];
   return data as Farmer[];
+}
+
+export async function fetchFarmerById(farmerId: string): Promise<Farmer | null> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('farmers')
+    .select('*')
+    .eq('id', farmerId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as Farmer;
 }
 
 export async function fetchDeliveriesByDate(date: string): Promise<MilkDelivery[]> {
@@ -66,6 +118,68 @@ export async function fetchDeliveriesByDate(date: string): Promise<MilkDelivery[
   const { data, error } = await supabase.from('milk_deliveries').select('*').eq('date', date);
   if (error || !data) return [];
   return (data as Record<string, unknown>[]).map(convertDeliveryRow);
+}
+
+export async function fetchDeliveriesInRange(
+  startDate: string,
+  endDate: string
+): Promise<MilkDelivery[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('milk_deliveries')
+    .select('*')
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: true });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(convertDeliveryRow);
+}
+
+export async function fetchDeliveriesForFarmer(
+  farmerId: string,
+  startDate: string,
+  endDate: string
+): Promise<MilkDelivery[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('milk_deliveries')
+    .select('*')
+    .eq('farmer_id', farmerId)
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: true });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(convertDeliveryRow);
+}
+
+export async function fetchLedgerEntriesInRange(
+  startDate: string,
+  endDate: string
+): Promise<LedgerEntry[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('ledger_entries')
+    .select('*')
+    .gte('transaction_date', startDate)
+    .lte('transaction_date', endDate)
+    .order('transaction_date', { ascending: false });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(convertLedgerEntryRow);
+}
+
+export async function fetchPaymentsInRange(
+  startDate: string,
+  endDate: string
+): Promise<Payment[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: false });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(convertPaymentRow);
 }
 
 export async function addFarmer(
@@ -100,7 +214,6 @@ export async function saveMilkDelivery(
 ) {
   const supabase = getSupabaseClient();
 
-  // prevent duplicate daily entries for same farmer/date/type
   const { data: existing } = await supabase
     .from('milk_deliveries')
     .select('id')
@@ -144,7 +257,5 @@ export async function updateMilkDelivery(deliveryId: string, litres: number) {
 }
 
 export async function syncPendingQueue() {
-  // Previously this project used an IndexedDB-backed sync queue.
-  // For now, syncing is handled directly in save/add APIs so this is a noop.
   return;
 }

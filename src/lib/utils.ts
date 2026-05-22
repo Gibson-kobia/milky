@@ -62,6 +62,32 @@ export const isWithin24Hours = (dateString: string) => {
   return diffMs < diff24h && diffMs >= 0;
 };
 
+// Month utilities
+export const getMonthStartString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+};
+
+export const getDaysInCurrentMonth = (): string[] => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1;
+  const monthEnd = new Date(year, month, 0);
+  
+  const days: string[] = [];
+  for (let d = 1; d <= monthEnd.getDate(); d++) {
+    const date = new Date(year, month - 1, d);
+    const dateStr = date.toISOString().split('T')[0];
+    // Only include days up to today
+    if (dateStr <= getTodayString()) {
+      days.push(dateStr);
+    }
+  }
+  return days;
+};
+
 // Calculation utilities
 export const calculateMilkValue = (litres: number, ratePerLitre: number) => {
   return litres * ratePerLitre;

@@ -1,17 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { fetchFarmers } from '@/lib/data';
+import { fetchDeliveriesForFarmer, fetchFarmerById, fetchLedgerEntriesInRange } from '@/lib/data';
 import { requireAuth } from '@/lib/auth';
-import type { Farmer } from '@/types';
+import {
+  calculateProfit,
+  formatCurrency,
+  formatDate,
+  formatLitres,
+  getMonthStartString,
+  getTodayString,
+} from '@/lib/utils';
+import type { Farmer, LedgerEntry, MilkDelivery } from '@/types';
 
 export default function FarmerDetailPage(props: any) {
   const { id } = props.params;
   const router = useRouter();
   const [farmer, setFarmer] = useState<Farmer | null>(null);
+  const [deliveries, setDeliveries] = useState<MilkDelivery[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -21,14 +31,50 @@ export default function FarmerDetailPage(props: any) {
     }
 
     const loadFarmer = async () => {
-      const farmers = await fetchFarmers();
-      const found = farmers.find((item) => item.id === id) || null;
-      setFarmer(found);
+      const today = getTodayString();
+      const monthStart = getMonthStartString();
+
+      const [farmerRecord, farmerDeliveries, ledgerData] = await Promise.all([
+        fetchFarmerById(id),
+        fetchDeliveriesForFarmer(id, monthStart, today),
+        fetchLedgerEntriesInRange(monthStart, today),
+      ]);
+
+      setFarmer(farmerRecord);
+      setDeliveries(farmerDeliveries);
+      setLedgerEntries(
+        ledgerData.filter((entry) => entry.farmer_id === id)
+      );
       setIsReady(true);
     };
 
     loadFarmer();
   }, [id, router]);
+
+  const monthlyLitres = useMemo(
+    () => deliveries.reduce((sum, delivery) => sum + delivery.litres, 0),
+    [deliveries]
+  );
+
+  const monthlyPayout = monthlyLitres * 55;
+  const monthlyProfit = calculateProfit(monthlyLitres, 55, 70);
+
+  const monthlyAdvances = useMemo(
+    () =>
+      ledgerEntries
+        .filter(
+          (entry) =>
+            entry.entry_type === 'advance_cash' ||
+            entry.entry_type === 'advance_goods'
+        )
+        .reduce((sum, entry) => sum + entry.amount_kes, 0),
+    [ledgerEntries]
+  );
+
+  const recentDeliveries = useMemo(
+    () => [...deliveries].slice(-7).reverse(),
+    [deliveries]
+  );
 
   if (!isReady) {
     return (
@@ -65,13 +111,57 @@ export default function FarmerDetailPage(props: any) {
         </Button>
       </div>
 
-      <Card className="p-6">
-        <p className="text-sm text-gray-700">Notes</p>
-        <p className="mt-2 text-gray-900">{farmer.notes || 'No notes available.'}</p>
-        <p className="mt-4 text-sm text-gray-700">
-          Evening delivery: {farmer.evening_delivery_enabled ? 'Enabled' : 'Disabled'}
-        </p>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-[1.8fr_1fr]">
+        <Card className="space-y-4 p-6">
+          <div>
+            <p className="text-sm font-semibold text-gray-700">Farmer details</p>
+            <p className="mt-2 text-gray-900">{farmer.notes || 'No notes available.'}</p>
+            <p className="mt-3 text-sm text-gray-600">
+              Evening delivery: {farmer.evening_delivery_enabled ? 'Enabled' : 'Disabled'}
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Month to date litres</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{formatLitres(monthlyLitres)}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Est. payout</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(monthlyPayout)}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Est. profit</p>
+              <p className="mt-2 text-2xl font-bold text-milk-green-600">{formatCurrency(monthlyProfit)}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Advances</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(monthlyAdvances)}</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="space-y-4 p-6">
+          <p className="text-sm font-semibold text-gray-700">Latest deliveries</p>
+          {recentDeliveries.length === 0 ? (
+            <p className="text-sm text-gray-600">No deliveries recorded for this month yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {recentDeliveries.map((delivery) => (
+                <div key={delivery.id} className="rounded-2xl border border-gray-200 bg-white p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-gray-900">{formatDate(delivery.date)}</p>
+                    <span className="text-xs uppercase tracking-wide text-gray-500">
+                      {delivery.delivery_type}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-lg font-semibold text-gray-900">{formatLitres(delivery.litres)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

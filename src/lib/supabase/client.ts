@@ -9,9 +9,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase: SupabaseClient = createClient(
+const noStoreFetch: typeof fetch = async (input, init) => {
+  return fetch(input, { ...init, cache: 'no-store' });
+};
+
+export const supabaseConfig = {
+  fetch: noStoreFetch,
+} as unknown as Parameters<typeof createClient>[2];
+
+const supabase: SupabaseClient = createClient(
   supabaseUrl,
-  supabaseAnonKey
+  supabaseAnonKey,
+  supabaseConfig
 );
 
 export function getSupabaseClient(): SupabaseClient {

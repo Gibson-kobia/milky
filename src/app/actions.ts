@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { getSupabaseClient } from '@/lib/supabase/client';
 
 export async function addMilkDelivery(
@@ -24,6 +25,9 @@ export async function addMilkDelivery(
       .single();
 
     if (error) throw error;
+
+    revalidatePath('/');
+    revalidatePath('/reports');
 
     return { success: true, data };
   } catch (error) {
@@ -54,6 +58,9 @@ export async function updateMilkDelivery(
 
     if (error) throw error;
 
+    revalidatePath('/');
+    revalidatePath('/reports');
+
     return { success: true, data };
   } catch (error) {
     console.error(error);
@@ -61,6 +68,27 @@ export async function updateMilkDelivery(
       success: false,
       error:
         error instanceof Error ? error.message : 'Failed to update delivery',
+    };
+  }
+}
+
+export async function clearAllData() {
+  try {
+    const supabase = getSupabaseClient();
+
+    await supabase.from('ledger_entries').delete();
+    await supabase.from('payments').delete();
+    await supabase.from('milk_deliveries').delete();
+
+    return { success: true };
+  } catch (error) {
+    console.error('clearAllData failed', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to clear legacy data',
     };
   }
 }
