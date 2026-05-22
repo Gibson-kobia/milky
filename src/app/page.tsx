@@ -9,7 +9,7 @@ import { FastEntryBoard } from '@/components/fast-entry-board';
 import { DailyDashboard } from '@/components/daily-dashboard';
 import { useToast } from '@/lib/stores/ui';
 import {
-  formatDisplayDate,
+  getFormattedDate,
   getDateOffsetString,
   getMonthStartString,
   getCurrentDate,
@@ -281,7 +281,7 @@ export default function HomePage() {
           </div>
           <div className="rounded-3xl bg-milk-green-50 p-4 text-sm text-milk-green-900 sm:text-right">
             <p className="font-medium">
-              {isToday(selectedDate) ? 'Today' : formatDisplayDate(selectedDate)}
+              {isToday(selectedDate) ? 'Today' : getFormattedDate(selectedDate)}
             </p>
             <p className="mt-1 text-xs text-gray-600">
               Select a day and enter litres quickly.
@@ -291,7 +291,7 @@ export default function HomePage() {
       </Card>
 
       <DailyDashboard
-        dateLabel={isToday(selectedDate) ? 'Today' : formatDisplayDate(selectedDate)}
+        dateLabel={isToday(selectedDate) ? 'Today' : getFormattedDate(selectedDate)}
         todayLitres={totalLitres}
         todayFarmers={farmersDelivered}
         todayPayout={selectedPayout}

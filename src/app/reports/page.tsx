@@ -14,14 +14,24 @@ import {
   formatMonthYear,
   getTodayString,
 } from '@/lib/utils';
-import { fetchDeliveriesInRange, fetchFarmers, fetchLedgerEntriesInRange } from '@/lib/data';
-import type { Farmer, LedgerEntry, MilkDelivery } from '@/types';
+import {
+  fetchDailyAdvanceAggregates,
+  fetchDailyDeliveryAggregates,
+  fetchFarmers,
+} from '@/lib/data';
+import type { Farmer } from '@/types';
+
+interface DailySummary {
+  day: string;
+  totalLitres: number;
+  totalFarmers: number;
+  totalAdvances: number;
+}
 
 export default function ReportsPage() {
   const router = useRouter();
   const [farmers, setFarmers] = useState<Farmer[]>([]);
-  const [deliveries, setDeliveries] = useState<MilkDelivery[]>([]);
-  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
+  const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -36,15 +46,23 @@ export default function ReportsPage() {
     const loadReports = async () => {
       setIsLoading(true);
       try {
-        const [farmersData, deliveriesData, ledgerData] = await Promise.all([
+        const [farmersData, deliveriesData, advancesData] = await Promise.all([
           fetchFarmers(),
-          fetchDeliveriesInRange(windowStart, today),
-          fetchLedgerEntriesInRange(windowStart, today),
+          fetchDailyDeliveryAggregates(windowStart, today),
+          fetchDailyAdvanceAggregates(windowStart, today),
         ]);
 
+        const advanceMap = new Map(
+          advancesData.map((item) => [item.day, item.totalAdvances])
+        );
+
         setFarmers(farmersData);
-        setDeliveries(deliveriesData);
-        setLedgerEntries(ledgerData);
+        setDailySummaries(
+          deliveriesData.map((item) => ({
+            ...item,
+            totalAdvances: advanceMap.get(item.day) ?? 0,
+          }))
+        );
       } catch (err) {
         setLoadError('Unable to load report data. Check your database connection and try again.');
         console.error(err);
@@ -57,31 +75,15 @@ export default function ReportsPage() {
   }, [today, windowStart]);
 
   const last7DailySummaries = useMemo(() => {
-    if (deliveries.length === 0) return [];
-
-    const grouped = deliveries.reduce<Record<string, MilkDelivery[]>>((acc, delivery) => {
-      acc[delivery.date] = acc[delivery.date] || [];
-      acc[delivery.date].push(delivery);
-      return acc;
-    }, {});
-
-    return Object.entries(grouped)
-      .sort(([a], [b]) => (a < b ? 1 : -1))
-      .slice(0, 7)
-      .map(([date, entries]) => {
-        const totalLitres = entries.reduce((sum, item) => sum + item.litres, 0);
-        return {
-          date,
-          totalLitres,
-          totalFarmers: new Set(entries.map((item) => item.farmer_id)).size,
-          estimatedProfit: calculateDailyProfit(totalLitres),
-          estimatedPayout: totalLitres * 55,
-        };
-      });
-  }, [deliveries]);
+    return dailySummaries.slice(0, 7).map((summary) => ({
+      ...summary,
+      estimatedProfit: calculateDailyProfit(summary.totalLitres),
+      estimatedPayout: summary.totalLitres * 55 - summary.totalAdvances,
+    }));
+  }, [dailySummaries]);
 
   const monthlySummaries = useMemo(() => {
-    if (deliveries.length === 0) return [];
+    if (dailySummaries.length === 0) return [];
 
     const grouped = new Map<
       string,
@@ -91,12 +93,12 @@ export default function ReportsPage() {
         totalLitres: number;
         totalPayouts: number;
         totalAdvances: number;
-        farmerIds: Set<string>;
+        farmerVisits: number;
       }
     >();
 
-    deliveries.forEach((delivery) => {
-      const date = new Date(delivery.date);
+    dailySummaries.forEach((summary) => {
+      const date = new Date(summary.day);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const existing = grouped.get(key);
 
@@ -107,23 +109,15 @@ export default function ReportsPage() {
           totalLitres: 0,
           totalPayouts: 0,
           totalAdvances: 0,
-          farmerIds: new Set(),
+          farmerVisits: 0,
         });
       }
 
-      const summary = grouped.get(key)!;
-      summary.totalLitres += delivery.litres;
-      summary.totalPayouts += delivery.litres * 55;
-      summary.farmerIds.add(delivery.farmer_id);
-    });
-
-    ledgerEntries.forEach((entry) => {
-      const key = entry.transaction_date.slice(0, 7);
-      const summary = grouped.get(key);
-      if (!summary) return;
-      if (entry.entry_type === 'advance_cash' || entry.entry_type === 'advance_goods') {
-        summary.totalAdvances += entry.amount_kes;
-      }
+      const summaryGroup = grouped.get(key)!;
+      summaryGroup.totalLitres += summary.totalLitres;
+      summaryGroup.totalPayouts += summary.totalLitres * 55;
+      summaryGroup.totalAdvances += summary.totalAdvances;
+      summaryGroup.farmerVisits += summary.totalFarmers;
     });
 
     return Array.from(grouped.values())
@@ -131,16 +125,16 @@ export default function ReportsPage() {
         month: item.month,
         year: item.year,
         totalLitres: item.totalLitres,
-        totalFarmers: item.farmerIds.size,
+        totalFarmers: item.farmerVisits,
         totalPayouts: item.totalPayouts,
         totalAdvances: item.totalAdvances,
         estimatedProfit: calculateProfit(item.totalLitres, 55, 70),
       }))
       .sort((a, b) => {
         if (a.year !== b.year) return b.year - a.year;
-        return b.month - a.month;
+        return a.month - b.month;
       });
-  }, [deliveries, ledgerEntries]);
+  }, [dailySummaries]);
 
   const activeFarmers = farmers.filter((farmer) => farmer.active).length;
 
@@ -171,10 +165,10 @@ export default function ReportsPage() {
             </Card>
           ) : (
             last7DailySummaries.map((report) => (
-              <Card key={report.date}>
+              <Card key={report.day}>
                 <CardContent className="flex flex-col gap-4 p-4 sm:p-6 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex-1">
-                    <p className="font-medium text-gray-900">{formatDate(report.date)}</p>
+                    <p className="font-medium text-gray-900">{formatDate(report.day)}</p>
                     <p className="mt-2 grid gap-2 text-sm text-gray-600 sm:grid-cols-2">
                       <span>{report.totalLitres}L collected</span>
                       <span>{report.totalFarmers} farmers delivered</span>

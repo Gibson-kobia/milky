@@ -38,30 +38,34 @@ export const formatMonthYear = (year: number, month: number) => {
   }).format(date);
 };
 
+import { format, addDays, parseISO, isValid } from 'date-fns';
+
 // Date utilities
-export const getTodayString = () => {
-  const today = new Date();
-  return today.toISOString().split('T')[0];
+export const getCurrentDate = () => {
+  return format(new Date(), 'yyyy-MM-dd');
 };
 
-export const getYesterdayString = () => {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  return yesterday.toISOString().split('T')[0];
-};
+export const getTodayString = getCurrentDate;
 
 export const getDateOffsetString = (dateString: string, offset: number) => {
-  const date = new Date(dateString);
-  date.setDate(date.getDate() + offset);
-  return date.toISOString().split('T')[0];
+  const base = parseISO(dateString);
+  if (!isValid(base)) return dateString;
+  const next = addDays(base, offset);
+  return format(next, 'yyyy-MM-dd');
 };
 
+export const formatDisplayDate = (dateString: string) => {
+  const date = parseISO(dateString);
+  if (!isValid(date)) return dateString;
+  return format(date, 'd MMM yyyy');
+};
+
+export const getFormattedDate = formatDisplayDate;
+
 export const formatShortDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('en-KE', {
-    day: 'numeric',
-    month: 'short',
-  }).format(date);
+  const date = parseISO(dateString);
+  if (!isValid(date)) return dateString;
+  return format(date, 'd MMM');
 };
 
 export const isToday = (dateString: string) => {

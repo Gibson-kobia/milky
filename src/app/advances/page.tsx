@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { fetchFarmers, addLedgerEntry } from '@/lib/data';
+import { getCurrentDate } from '@/lib/utils';
 import { useToast } from '@/lib/stores/ui';
 import type { Farmer } from '@/types';
 
@@ -14,17 +15,16 @@ export default function AdvancesPage() {
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [farmerId, setFarmerId] = useState<string>('');
   const [amount, setAmount] = useState<number | ''>('');
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState<string>(getCurrentDate());
   const [type, setType] = useState<'advance_cash' | 'advance_goods'>('advance_cash');
   const [note, setNote] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const { success, error } = useToast();
   const router = useRouter();
 
-  // Load farmers once
-  useState(() => {
+  useEffect(() => {
     fetchFarmers().then(setFarmers).catch(() => {});
-  });
+  }, []);
 
   const handleSubmit = async () => {
     if (!farmerId || !amount || amount <= 0) {

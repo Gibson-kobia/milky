@@ -110,7 +110,13 @@ export function FastEntryBoard({
 
   const handleSubmit = async (farmerId: string) => {
     const litres = entries[farmerId];
-    if (!litres || litres <= 0 || !validateMilkQuantity(litres)) {
+    if (
+      submitting[farmerId] ||
+      pendingFlag ||
+      !litres ||
+      litres <= 0 ||
+      !validateMilkQuantity(litres)
+    ) {
       return;
     }
 
@@ -275,9 +281,9 @@ export function FastEntryBoard({
                       <Button
                         size="sm"
                         onClick={() => handleSubmit(farmer.id)}
-                        disabled={!hasEntry || isSubmitting || isLoading || savingFlag || pendingFlag}
+                        disabled={!hasEntry || isSubmitting || isLoading || pendingFlag}
                       >
-                        {isSubmitting || savingFlag || pendingFlag ? 'Saving...' : 'Save'}
+                        {isSubmitting || pendingFlag ? 'Saving...' : 'Save'}
                       </Button>
                     )}
                   </div>

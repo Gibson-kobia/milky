@@ -135,6 +135,73 @@ export async function fetchDeliveriesInRange(
   return (data as Record<string, unknown>[]).map(convertDeliveryRow);
 }
 
+export interface DailyDeliveryAggregate {
+  day: string;
+  totalLitres: number;
+  totalFarmers: number;
+}
+
+export interface DailyAdvanceAggregate {
+  day: string;
+  totalAdvances: number;
+}
+
+export async function fetchDailyDeliveryAggregates(
+  startDate: string,
+  endDate: string
+): Promise<DailyDeliveryAggregate[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('milk_deliveries')
+    .select(
+      "date_trunc('day', created_at) as day, sum(litres) as total_litres, count(distinct farmer_id) as total_farmers",
+      { count: 'exact' }
+    )
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('day', { ascending: false });
+
+  if (error || !data) return [];
+  const rows = data as unknown as Record<string, unknown>[];
+  return rows.map((row) => ({
+    day: String(row.day),
+    totalLitres:
+      typeof row.total_litres === 'string'
+        ? parseFloat(row.total_litres)
+        : Number(row.total_litres),
+    totalFarmers:
+      typeof row.total_farmers === 'string'
+        ? parseFloat(row.total_farmers)
+        : Number(row.total_farmers),
+  }));
+}
+
+export async function fetchDailyAdvanceAggregates(
+  startDate: string,
+  endDate: string
+): Promise<DailyAdvanceAggregate[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('ledger_entries')
+    .select("date_trunc('day', transaction_date) as day, sum(amount_kes) as total_advances", {
+      count: 'exact',
+    })
+    .in('entry_type', ['advance_cash', 'advance_goods'])
+    .gte('transaction_date', startDate)
+    .lte('transaction_date', endDate)
+    .order('day', { ascending: false });
+
+  if (error || !data) return [];
+  const rows = data as unknown as Record<string, unknown>[];
+  return rows.map((row) => ({
+    day: String(row.day),
+    totalAdvances:
+      typeof row.total_advances === 'string'
+        ? parseFloat(row.total_advances)
+        : Number(row.total_advances),
+  }));
+}
+
 export async function fetchDeliveriesForFarmer(
   farmerId: string,
   startDate: string,
