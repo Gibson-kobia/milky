@@ -214,33 +214,49 @@ export async function saveMilkDelivery(
 ) {
   const supabase = getSupabaseClient();
 
-  const { data: existing } = await supabase
-    .from('milk_deliveries')
-    .select('id')
-    .eq('farmer_id', farmerId)
-    .eq('date', date)
-    .eq('delivery_type', deliveryType)
-    .maybeSingle();
-
-  if (existing) {
-    throw new Error('Delivery for this farmer/date/type already exists');
-  }
+  // Use upsert to deterministically create-or-update a single row
+  const payload = {
+    farmer_id: farmerId,
+    litres,
+    delivery_type: deliveryType,
+    date,
+    updated_at: new Date().toISOString(),
+  } as Record<string, unknown>;
 
   const { data, error } = await supabase
     .from('milk_deliveries')
-    .insert({
-      farmer_id: farmerId,
-      litres,
-      delivery_type: deliveryType,
-      date,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
+    .upsert(payload, { onConflict: 'farmer_id,date,delivery_type' })
     .select()
     .single();
 
   if (error) throw error;
   return convertDeliveryRow(data as Record<string, unknown>);
+}
+
+// Add ledger/advance insert helper
+export async function addLedgerEntry(
+  farmerId: string | null,
+  entryType: string,
+  amountKes: number,
+  transactionDate: string,
+  description: string | null = null
+) {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('ledger_entries')
+    .insert({
+      farmer_id: farmerId,
+      entry_type: entryType,
+      amount_kes: amountKes,
+      transaction_date: transactionDate,
+      description,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return convertLedgerEntryRow(data as Record<string, unknown>);
 }
 
 export async function updateMilkDelivery(deliveryId: string, litres: number) {

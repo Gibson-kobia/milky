@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,10 @@ import { FastEntryBoard } from '@/components/fast-entry-board';
 import { DailyDashboard } from '@/components/daily-dashboard';
 import { useToast } from '@/lib/stores/ui';
 import {
-  formatDate,
+  formatDisplayDate,
   getDateOffsetString,
   getMonthStartString,
-  getTodayString,
+  getCurrentDate,
   isToday,
 } from '@/lib/utils';
 import type { Farmer, MilkDelivery } from '@/types';
@@ -29,10 +29,13 @@ export default function HomePage() {
   const { success, error } = useToast();
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [deliveries, setDeliveries] = useState<MilkDelivery[]>([]);
-  const [selectedDate, setSelectedDate] = useState(getTodayString());
+  const searchParams = useSearchParams();
+  const [selectedDate, setSelectedDate] = useState<string>(getCurrentDate);
   const [isLoading, setIsLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!requireAuth()) {
@@ -43,7 +46,7 @@ export default function HomePage() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const today = getTodayString();
+        const today = getCurrentDate();
         const monthStart = getMonthStartString();
         const [farmersData, deliveriesData] = await Promise.all([
           fetchFarmers(),
@@ -52,7 +55,16 @@ export default function HomePage() {
 
         setFarmers(farmersData);
         setDeliveries(deliveriesData);
-        setSelectedDate(today);
+
+        // Keep selected date from query param if present, otherwise default to today
+        const paramDate = searchParams?.get('date');
+        if (paramDate) {
+          setSelectedDate(paramDate);
+        } else {
+          setSelectedDate(today);
+          // update URL to include date for consistency
+          router.replace(`/?date=${today}`);
+        }
       } catch (err) {
         setLoadError(
           'Unable to load data. Please check your Supabase settings and try again.'
@@ -66,13 +78,26 @@ export default function HomePage() {
     };
 
     loadData();
-  }, [error, router]);
+    // Only run on mount - searchParams is reactive elsewhere when user navigates
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error]);
+
+  // Keep selectedDate in sync with browser navigation
+  useEffect(() => {
+    const param = searchParams?.get('date');
+    if (param && param !== selectedDate) {
+      setSelectedDate(param);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleAddDelivery = async (
     farmerId: string,
     litres: number,
     date: string
   ) => {
+    if (isSaving) return; // prevent duplicate global saves
+    setIsSaving(true);
     try {
       const newDelivery = await saveMilkDelivery(
         farmerId,
@@ -80,45 +105,64 @@ export default function HomePage() {
         'morning',
         date
       );
-
-      setDeliveries((prev) => [
-        ...prev.filter(
-          (d) =>
-            !(d.farmer_id === farmerId &&
-              d.date === date &&
-              d.delivery_type === 'morning')
-        ),
-        newDelivery,
-      ]);
-
+      startTransition(() => {
+        setDeliveries((prev) => [
+          ...prev.filter(
+            (d) =>
+              !(d.farmer_id === farmerId &&
+                d.date === date &&
+                d.delivery_type === 'morning')
+          ),
+          newDelivery,
+        ]);
+      });
       success(`${litres}L saved`);
     } catch (err) {
       error('Failed to save delivery');
       console.error(err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleUpdateDelivery = async (deliveryId: string, litres: number) => {
+    if (isSaving) return;
+    setIsSaving(true);
     try {
       const updated = await updateMilkDelivery(deliveryId, litres);
-      setDeliveries((prev) =>
-        prev.map((delivery) =>
-          delivery.id === updated.id ? updated : delivery
-        )
-      );
+      startTransition(() => {
+        setDeliveries((prev) =>
+          prev.map((delivery) =>
+            delivery.id === updated.id ? updated : delivery
+          )
+        );
+      });
       success(`Updated to ${litres}L`);
     } catch (err) {
       error('Failed to update delivery');
       console.error(err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const today = getTodayString();
+  const today = getCurrentDate();
   const monthStart = getMonthStartString();
   const previousDate = getDateOffsetString(selectedDate, -1);
   const nextDate = getDateOffsetString(selectedDate, 1);
   const canGoBack = previousDate >= monthStart;
-  const canGoForward = nextDate <= today;
+  const canGoForward = nextDate <= getCurrentDate();
+
+  const updateDateInUrl = (value: string, replace = false) => {
+    const url = `/?date=${value}`;
+    if (replace) router.replace(url); else router.push(url);
+  };
+
+  const handleDateChange = (value: string) => {
+    if (value < monthStart || value > getCurrentDate()) return;
+    setSelectedDate(value);
+    updateDateInUrl(value);
+  };
 
   const selectedDeliveries = deliveries.filter(
     (d) => d.date === selectedDate && d.delivery_type === 'morning'
@@ -169,11 +213,6 @@ export default function HomePage() {
         return a.name.localeCompare(b.name);
       });
   }, [deliveries, farmers, selectedDate]);
-
-  const handleDateChange = (value: string) => {
-    if (value < monthStart || value > today) return;
-    setSelectedDate(value);
-  };
 
   if (!isReady) {
     return (
@@ -242,7 +281,7 @@ export default function HomePage() {
           </div>
           <div className="rounded-3xl bg-milk-green-50 p-4 text-sm text-milk-green-900 sm:text-right">
             <p className="font-medium">
-              {isToday(selectedDate) ? 'Today' : formatDate(selectedDate)}
+              {isToday(selectedDate) ? 'Today' : formatDisplayDate(selectedDate)}
             </p>
             <p className="mt-1 text-xs text-gray-600">
               Select a day and enter litres quickly.
@@ -252,7 +291,7 @@ export default function HomePage() {
       </Card>
 
       <DailyDashboard
-        dateLabel={isToday(selectedDate) ? 'Today' : formatDate(selectedDate)}
+        dateLabel={isToday(selectedDate) ? 'Today' : formatDisplayDate(selectedDate)}
         todayLitres={totalLitres}
         todayFarmers={farmersDelivered}
         todayPayout={selectedPayout}
@@ -273,6 +312,8 @@ export default function HomePage() {
           onAddDelivery={handleAddDelivery}
           onUpdateDelivery={handleUpdateDelivery}
           isLoading={isLoading}
+          isSaving={isSaving}
+          isPending={isPending}
         />
       )}
     </div>

@@ -16,6 +16,8 @@ interface FastEntryBoardProps {
   onAddDelivery: (farmerId: string, litres: number, date: string) => Promise<void>;
   onUpdateDelivery: (deliveryId: string, litres: number) => Promise<void>;
   isLoading?: boolean;
+  isSaving?: boolean;
+  isPending?: boolean;
 }
 
 export function FastEntryBoard({
@@ -25,6 +27,8 @@ export function FastEntryBoard({
   onAddDelivery,
   onUpdateDelivery,
   isLoading = false,
+  isSaving = false,
+  isPending = false,
 }: FastEntryBoardProps) {
   const [entries, setEntries] = useState<Record<string, number>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -33,6 +37,8 @@ export function FastEntryBoard({
   const inputRefs = useRef<Record<string, HTMLInputElement>>({});
 
   const activeFarmers = farmers.filter((f) => f.active);
+  const savingFlag = isSaving ?? false;
+  const pendingFlag = isPending ?? false;
 
   const selectedDeliveryForFarmer = (farmerId: string) =>
     deliveries.find(
@@ -219,6 +225,7 @@ export function FastEntryBoard({
                         <button
                           onClick={() => handleQuickAdd(farmer.id, -0.5)}
                           className="rounded px-2 py-1 text-gray-600 hover:bg-gray-100"
+                          disabled={submitting[farmer.id] || savingFlag || pendingFlag}
                         >
                           <Minus className="h-4 w-4" />
                         </button>
@@ -237,11 +244,12 @@ export function FastEntryBoard({
                           onKeyPress={(e) => handleKeyPress(e, farmer.id)}
                           className="h-9 w-20 border-0 px-2 text-center text-sm focus:ring-0"
                           autoFocus
-                          disabled={isSubmitting}
+                          disabled={submitting[farmer.id] || savingFlag || pendingFlag}
                         />
                         <button
                           onClick={() => handleQuickAdd(farmer.id, 0.5)}
                           className="rounded px-2 py-1 text-gray-600 hover:bg-gray-100"
+                          disabled={submitting[farmer.id] || savingFlag || pendingFlag}
                         >
                           <Plus className="h-4 w-4" />
                         </button>
@@ -267,9 +275,9 @@ export function FastEntryBoard({
                       <Button
                         size="sm"
                         onClick={() => handleSubmit(farmer.id)}
-                        disabled={!hasEntry || isSubmitting || isLoading}
+                        disabled={!hasEntry || isSubmitting || isLoading || savingFlag || pendingFlag}
                       >
-                        {isSubmitting ? 'Saving...' : 'Save'}
+                        {isSubmitting || savingFlag || pendingFlag ? 'Saving...' : 'Save'}
                       </Button>
                     )}
                   </div>
