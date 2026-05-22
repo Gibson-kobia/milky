@@ -92,6 +92,16 @@ export function FastEntryBoard({
     }
   };
 
+  const beginEdit = (farmerId: string, initialValue?: number) => {
+    setEditingId(farmerId);
+    if (initialValue !== undefined) {
+      setEntries((prev) => ({
+        ...prev,
+        [farmerId]: initialValue,
+      }));
+    }
+  };
+
   const handleSubmit = async (farmerId: string) => {
     const litres = entries[farmerId];
     if (!litres || litres <= 0 || !validateMilkQuantity(litres)) {
@@ -199,7 +209,7 @@ export function FastEntryBoard({
                     <Button
                       size="sm"
                       variant={delivery ? 'secondary' : 'outline'}
-                      onClick={() => setEditingId(farmer.id)}
+                      onClick={() => beginEdit(farmer.id, delivery?.litres)}
                       className="min-w-[72px]"
                     >
                       {delivery ? 'Edit' : 'Add'}
