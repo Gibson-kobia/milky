@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import '@/app/globals.css';
 import { ToastContainer } from '@/components/toast-container';
+import { BottomNavigation } from '@/components/bottom-navigation';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -26,8 +27,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="bg-gray-50">
+      <body className="bg-white">
         {children}
+        <BottomNavigation />
         <ToastContainer />
       </body>
     </html>

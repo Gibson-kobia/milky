@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FastEntryBoard } from '@/components/fast-entry-board';
@@ -74,7 +75,6 @@ export function HomeContent() {
     };
 
     loadData();
-    // Only run on mount - searchParams is reactive elsewhere when user navigates
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error, searchParams]);
 
@@ -90,7 +90,7 @@ export function HomeContent() {
     litres: number,
     date: string
   ) => {
-    if (isSaving) return; // prevent duplicate global saves
+    if (isSaving) return;
     setIsSaving(true);
     try {
       const newDelivery = await saveMilkDelivery(
@@ -148,7 +148,8 @@ export function HomeContent() {
 
   const updateDateInUrl = (value: string, replace = false) => {
     const url = `/?date=${value}`;
-    if (replace) router.replace(url); else router.push(url);
+    if (replace) router.replace(url);
+    else router.push(url);
   };
 
   const handleDateChange = (value: string) => {
@@ -164,6 +165,7 @@ export function HomeContent() {
   const farmersDelivered = new Set(
     selectedDeliveries.map((d) => d.farmer_id)
   ).size;
+
   const sortedFarmers = useMemo(() => {
     return [...farmers]
       .filter((farmer) => farmer.active)
@@ -185,12 +187,12 @@ export function HomeContent() {
 
         return a.name.localeCompare(b.name);
       });
-  }, [deliveries, farmers, selectedDate]);
+  }, [deliveries, farmers]);
 
   if (!isReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-milk-green-50 to-white px-4 py-12">
-        <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-lg">
+      <div className="min-h-screen flex items-center justify-center px-4 py-12">
+        <div className="rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
           <p className="text-sm font-medium text-gray-700">Loading…</p>
         </div>
       </div>
@@ -198,62 +200,72 @@ export function HomeContent() {
   }
 
   return (
-    <div className="space-y-6 pb-12">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Milky</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleDateChange(previousDate)}
-            disabled={!canGoBack}
-            aria-label="Previous day"
-          >
-            ←
-          </Button>
-          <div className="text-center">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Selected date</p>
-            <h2 className="text-lg font-semibold text-gray-900">{formatDateHeading(selectedDate)}</h2>
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="space-y-6 pb-24">
+        {/* Date Navigation Bar */}
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="label-operational">Selected Date</p>
+            <h1 className="mt-1 text-2xl font-bold text-gray-950">
+              {formatDateHeading(selectedDate)}
+            </h1>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleDateChange(nextDate)}
-            disabled={!canGoForward}
-            aria-label="Next day"
-          >
-            →
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleDateChange(previousDate)}
+              disabled={!canGoBack}
+              className="h-10 w-10 p-0"
+              aria-label="Previous day"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleDateChange(nextDate)}
+              disabled={!canGoForward}
+              className="h-10 w-10 p-0"
+              aria-label="Next day"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
 
-      <DailyDashboard
-        dateLabel={formatDateHeading(selectedDate)}
-        todayLitres={totalLitres}
-        todayFarmers={farmersDelivered}
-      />
-
-      {loadError ? (
-        <Card className="p-6 text-center">
-          <p className="text-red-700">{loadError}</p>
-          <Button className="mt-4" onClick={() => router.refresh()}>
-            Retry
-          </Button>
-        </Card>
-      ) : (
-        <FastEntryBoard
-          farmers={sortedFarmers}
-          deliveries={deliveries}
-          selectedDate={selectedDate}
-          onAddDelivery={handleAddDelivery}
-          onUpdateDelivery={handleUpdateDelivery}
-          isLoading={isLoading}
-          isSaving={isSaving}
-          isPending={isPending}
+        {/* Daily Metrics */}
+        <DailyDashboard
+          dateLabel={formatDateHeading(selectedDate)}
+          todayLitres={totalLitres}
+          todayFarmers={farmersDelivered}
         />
-      )}
+
+        {/* Error State */}
+        {loadError ? (
+          <Card className="border-red-200 bg-red-50 p-6">
+            <p className="text-sm text-red-700 font-medium">{loadError}</p>
+            <Button
+              size="sm"
+              className="mt-4"
+              onClick={() => router.refresh()}
+            >
+              Retry
+            </Button>
+          </Card>
+        ) : (
+          <FastEntryBoard
+            farmers={sortedFarmers}
+            deliveries={deliveries}
+            selectedDate={selectedDate}
+            onAddDelivery={handleAddDelivery}
+            onUpdateDelivery={handleUpdateDelivery}
+            isLoading={isLoading}
+            isSaving={isSaving}
+            isPending={isPending}
+          />
+        )}
+      </div>
     </div>
   );
 }

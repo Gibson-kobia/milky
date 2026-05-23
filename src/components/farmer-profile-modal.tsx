@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
-import { Card } from '@/components/ui/card';
+import { X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { fetchFarmerById, fetchAdvancesForFarmer, fetchDeliveriesForFarmer } from '@/lib/data';
 import type { MilkDelivery } from '@/types';
 
@@ -36,41 +36,63 @@ export default function FarmerProfileModal({ farmerId, open, onOpenChange, selec
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{name}</DialogTitle>
-          <DialogDescription>Advances · Notes · History</DialogDescription>
+      <DialogContent className="max-w-md">
+        <DialogHeader className="border-b border-gray-100 pb-4">
+          <button
+            onClick={() => onOpenChange(false)}
+            className="absolute right-4 top-4 rounded-lg p-1 hover:bg-gray-100 transition-colors"
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+          <DialogTitle className="text-xl font-bold text-gray-950">{name}</DialogTitle>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+            Advances • Deliveries
+          </p>
         </DialogHeader>
 
-        <div className="mt-4 space-y-4">
-          <Card className="p-3">
-            <p className="text-xs font-semibold text-gray-600">Advances</p>
+        <div className="space-y-6 pt-4">
+          {/* Advances Section */}
+          <div className="space-y-3">
+            <p className="label-operational">Advances</p>
             {advances.length === 0 ? (
-              <p className="mt-2 text-sm text-gray-700">No advances</p>
+              <p className="text-sm text-gray-500 italic">No advances recorded</p>
             ) : (
-              <ul className="mt-2 space-y-1 text-sm text-gray-700">
+              <div className="space-y-2">
                 {advances.map((a) => (
-                  <li key={a.id}>{a.date} — {a.amount} KES — {a.note}</li>
+                  <div
+                    key={a.id}
+                    className="flex items-start justify-between rounded-lg bg-gray-50 px-3 py-2.5 border border-gray-100"
+                  >
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500">{a.date}</p>
+                      {a.note && <p className="text-sm text-gray-700 mt-1">{a.note}</p>}
+                    </div>
+                    <p className="font-semibold text-gray-900 ml-2">{a.amount} KES</p>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
-          </Card>
+          </div>
 
-          <Card className="p-3">
-            <p className="text-xs font-semibold text-gray-600">Recent deliveries</p>
+          {/* Deliveries Section */}
+          <div className="space-y-3">
+            <p className="label-operational">Recent Deliveries</p>
             {deliveries.length === 0 ? (
-              <p className="mt-2 text-sm text-gray-700">No deliveries</p>
+              <p className="text-sm text-gray-500 italic">No deliveries recorded</p>
             ) : (
-              <ul className="mt-2 space-y-1 text-sm text-gray-700">
+              <div className="space-y-2">
                 {deliveries.map((d) => (
-                  <li key={d.id}>{d.date} — {d.litres}L</li>
+                  <div
+                    key={d.id}
+                    className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2.5 border border-gray-100"
+                  >
+                    <p className="text-sm text-gray-700">{d.date}</p>
+                    <p className="font-semibold text-gray-900">{d.litres}L</p>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
-          </Card>
-        </div>
-        <div className="mt-4 text-right">
-          <DialogClose className="rounded bg-milk-green-600 text-white px-3 py-1">Close</DialogClose>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

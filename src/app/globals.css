@@ -2,6 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Premium Typography System */
+@layer base {
+  /* Font family with better rendering */
+  body {
+    @apply font-sans antialiased text-gray-900 bg-white;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1 {
+    @apply text-3xl font-bold tracking-tight text-gray-950 leading-tight;
+  }
+
+  h2 {
+    @apply text-2xl font-bold tracking-tight text-gray-950 leading-snug;
+  }
+
+  h3 {
+    @apply text-lg font-semibold tracking-tight text-gray-900 leading-snug;
+  }
+
+  h4 {
+    @apply text-base font-semibold text-gray-900;
+  }
+
+  p {
+    @apply text-base leading-relaxed text-gray-700;
+  }
+
+  label {
+    @apply text-sm font-medium text-gray-700;
+  }
+
+  /* Premium form focus states */
+  input,
+  textarea,
+  select {
+    @apply transition-all duration-150;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    @apply outline-none ring-2 ring-milk-green-500 ring-offset-0 border-milk-green-500;
+  }
+}
+
 * {
   @apply border-gray-200;
 }
@@ -10,17 +58,12 @@ html {
   @apply scroll-smooth;
 }
 
-body {
-  @apply bg-white text-gray-900;
-  font-feature-settings: 'rlig' 1, 'calt' 1;
-}
-
 ::-webkit-scrollbar {
   @apply w-2;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100;
+  @apply bg-gray-50;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -31,24 +74,67 @@ body {
   @apply bg-gray-400;
 }
 
-/* Smooth page transitions */
+/* Premium transitions */
 main {
   @apply transition-opacity duration-300;
 }
 
-/* Form focus states */
-input:focus,
-textarea:focus,
-select:focus {
-  @apply outline-none ring-2 ring-milk-green-500 ring-offset-1;
-}
-
-/* Button reset */
 button {
-  @apply transition-colors duration-200;
+  @apply transition-all duration-200;
 }
 
-/* Prevent layout shift on scrollbar appearance */
+/* Prevent layout shift */
 html {
   overflow-y: scroll;
+}
+
+/* Premium Card System */
+@layer components {
+  .card-premium {
+    @apply rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  .card-subtle {
+    @apply rounded-lg border border-gray-100 bg-gradient-to-br from-white to-gray-50 shadow-xs;
+  }
+
+  /* Operational spacing */
+  .section-spacing {
+    @apply space-y-6;
+  }
+
+  /* Operational typography */
+  .label-operational {
+    @apply text-xs font-semibold uppercase tracking-wider text-gray-500;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold tracking-tight text-gray-950 font-sans;
+  }
+
+  /* Premium buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-milk-green-600 text-white font-medium hover:bg-milk-green-700 active:bg-milk-green-800 transition-colors duration-200;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-gray-100 text-gray-900 font-medium hover:bg-gray-200 active:bg-gray-300 transition-colors duration-200;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 active:bg-gray-200 transition-colors duration-200;
+  }
+}
+
+/* Mobile optimization */
+@media (max-width: 640px) {
+  body {
+    @apply pb-20;
+  }
+
+  input,
+  textarea,
+  select {
+    @apply text-base;
+  }
 }
