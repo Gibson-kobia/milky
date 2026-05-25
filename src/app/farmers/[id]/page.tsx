@@ -100,8 +100,8 @@ export default function FarmerDetailPage(props: any) {
   }
 
   return (
-    <div className="space-y-6 pb-12">
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-6 pb-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{farmer.name}</h1>
           <p className="mt-1 text-sm text-gray-600">{farmer.phone}</p>

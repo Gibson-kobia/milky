@@ -48,7 +48,7 @@ export default function AdvancesPage() {
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Advances</h1>
         <p className="mt-1 text-sm text-gray-600">Record cash or goods advances to farmers.</p>

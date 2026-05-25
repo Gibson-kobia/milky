@@ -62,10 +62,11 @@ export default function FarmerProfileModal({ farmerId, open, onOpenChange, selec
 
   const grossEarnings = monthlyLitres * 55;
   const finalPayout = grossEarnings - totalAdvances;
+  const monthlyProfit = monthlyLitres * 15;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-hidden">
         <DialogHeader className="border-b border-gray-100 pb-4">
           <button
             onClick={() => onOpenChange(false)}
@@ -73,77 +74,112 @@ export default function FarmerProfileModal({ farmerId, open, onOpenChange, selec
           >
             <X className="h-5 w-5 text-gray-500" />
           </button>
-          <DialogTitle className="text-xl font-bold text-gray-950">{name}</DialogTitle>
+          <DialogTitle className="text-xl font-semibold text-gray-950">{name}</DialogTitle>
           <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Advances • Deliveries
+            Farmer ledger overview
           </p>
         </DialogHeader>
 
-        <div className="space-y-6 pt-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Month litres</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900">{monthlyLitres}L</p>
+        <div className="space-y-6 overflow-y-auto pb-4 pt-4 pr-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Month litres</p>
+              <p className="mt-3 text-3xl font-semibold text-gray-950">{monthlyLitres}L</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Gross earnings</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(grossEarnings)}</p>
+            <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Gross earnings</p>
+              <p className="mt-3 text-3xl font-semibold text-gray-950">{formatCurrency(grossEarnings)}</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Advances</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(totalAdvances)}</p>
+            <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Advances</p>
+              <p className="mt-3 text-3xl font-semibold text-gray-900">{formatCurrency(totalAdvances)}</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Final payout</p>
-              <p className="mt-2 text-2xl font-bold text-milk-green-600">{formatCurrency(finalPayout)}</p>
+            <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Final payout</p>
+              <p className="mt-3 text-3xl font-semibold text-milk-green-600">{formatCurrency(finalPayout)}</p>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-4">
-            <p className="text-sm font-semibold text-gray-700">Advances</p>
+          <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-semibold text-gray-700">Advances ledger</p>
             {isLoading ? (
               <p className="mt-3 text-sm text-gray-600">Loading advances…</p>
             ) : advances.length === 0 ? (
               <p className="mt-3 text-sm text-gray-500 italic">No advances recorded yet.</p>
             ) : (
-              <div className="mt-3 space-y-3">
+              <div className="mt-4 space-y-3">
                 {advances.map((advance) => (
-                  <div key={advance.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium text-gray-900">
+                  <div key={advance.id} className="rounded-3xl border border-gray-100 bg-gray-50 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {formatCurrency(advance.amount_kes)} — {advance.entry_type === 'advance_cash' ? 'Cash' : 'Goods'}
+                        </p>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">{formatDate(advance.transaction_date)}</p>
+                      </div>
+                      <div className="rounded-2xl bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm">
                         {advance.entry_type === 'advance_cash' ? 'Cash' : 'Goods'}
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(advance.amount_kes)}</p>
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">{formatDate(advance.transaction_date)}</p>
-                    {advance.description && (
-                      <p className="mt-2 text-sm text-gray-700">{advance.description}</p>
-                    )}
+                    {advance.description ? (
+                      <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-3">
+                        <p className="text-xs uppercase tracking-wide text-gray-500">Reason</p>
+                        <p className="mt-1 text-sm text-gray-700">{advance.description}</p>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-4">
-            <p className="text-sm font-semibold text-gray-700">Recent deliveries</p>
+          <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-700">Recent deliveries</p>
+                <p className="mt-1 text-xs text-gray-500">Latest month activity</p>
+              </div>
+              <p className="text-sm font-medium text-gray-900">{deliveries.length} deliveries</p>
+            </div>
             {isLoading ? (
-              <p className="mt-3 text-sm text-gray-600">Loading deliveries…</p>
+              <p className="mt-4 text-sm text-gray-600">Loading deliveries…</p>
             ) : deliveries.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-500 italic">No deliveries recorded yet.</p>
+              <p className="mt-4 text-sm text-gray-500 italic">No deliveries recorded yet.</p>
             ) : (
-              <div className="mt-3 space-y-3">
+              <div className="mt-4 space-y-3">
                 {deliveries.slice(0, 7).map((delivery) => (
-                  <div key={delivery.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium text-gray-900">{formatDate(delivery.date)}</p>
-                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(delivery.litres * 55)}</p>
+                  <div key={delivery.id} className="rounded-3xl border border-gray-100 bg-gray-50 p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{formatDate(delivery.date)}</p>
+                        <p className="text-sm text-gray-600">{delivery.litres}L delivered</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs uppercase tracking-wide text-gray-500">Earned</p>
+                        <p className="mt-1 text-lg font-semibold text-milk-green-600">{formatCurrency(delivery.litres * 55)}</p>
+                      </div>
                     </div>
-                    <p className="mt-1 text-sm text-gray-700">{delivery.litres}L</p>
                   </div>
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">Gross earnings</p>
+                <p className="mt-2 text-lg font-semibold text-gray-900">{formatCurrency(grossEarnings)}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">Total advances</p>
+                <p className="mt-2 text-lg font-semibold text-gray-900">{formatCurrency(totalAdvances)}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">Profit margin</p>
+                <p className="mt-2 text-lg font-semibold text-milk-green-600">{formatCurrency(monthlyProfit)}</p>
+              </div>
+            </div>
           </div>
         </div>
       </DialogContent>

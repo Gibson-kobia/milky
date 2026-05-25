@@ -148,6 +148,16 @@ export function ReportsContent() {
   }, [dailySummaries]);
 
   const activeFarmers = farmers.filter((farmer) => farmer.active).length;
+  const selectedMonthSummary = useMemo(() => {
+    const date = new Date(selectedDate);
+    if (Number.isNaN(date.getTime())) return null;
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    return monthlySummaries.find(
+      (summary) => summary.month === month && summary.year === year
+    ) ?? null;
+  }, [monthlySummaries, selectedDate]);
+
   const previousDate = getDateOffsetString(selectedDate, -1);
   const nextDate = getDateOffsetString(selectedDate, 1);
   const canGoBack = previousDate >= windowStart;
@@ -160,7 +170,7 @@ export function ReportsContent() {
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 px-4 sm:px-6 lg:px-8">
       <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reports</p>
@@ -194,50 +204,97 @@ export function ReportsContent() {
         </div>
       </div>
 
-      {selectedSummary ? (
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="grid gap-4 sm:grid-cols-4">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Selected date</p>
-              <p className="mt-2 text-lg font-semibold text-gray-900">{formatDate(selectedSummary.day)}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Daily Summary</p>
+              {selectedSummary ? (
+                <p className="mt-2 text-lg font-semibold text-gray-900">{formatDate(selectedSummary.day)}</p>
+              ) : (
+                <p className="mt-2 text-lg font-semibold text-gray-900">No selected date</p>
+              )}
             </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Litres</p>
-              <p className="mt-2 text-2xl font-semibold text-gray-900">{selectedSummary.totalLitres}L</p>
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3 text-center">
+              <p className="text-xs uppercase tracking-wide text-gray-500">Farmers</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{selectedSummary?.totalFarmers ?? 0}</p>
             </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Farmers</p>
-              <p className="mt-2 text-2xl font-semibold text-gray-900">{selectedSummary.totalFarmers}</p>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Litres collected</p>
+              <p className="mt-2 text-3xl font-semibold text-gray-900">{selectedSummary?.totalLitres ?? 0}L</p>
             </div>
-            <div>
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Expected payout</p>
-              <p className="mt-2 text-2xl font-semibold text-milk-green-600">
-                {formatCurrency(selectedSummary.totalLitres * DAILY_FARMER_RATE)}
+              <p className="mt-2 text-3xl font-semibold text-milk-green-600">
+                {formatCurrency((selectedSummary?.totalLitres ?? 0) * DAILY_FARMER_RATE)}
               </p>
             </div>
-          </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Advances</p>
-              <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(selectedSummary.totalAdvances)}</p>
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Total advances</p>
+              <p className="mt-2 text-3xl font-semibold text-gray-900">{formatCurrency(selectedSummary?.totalAdvances ?? 0)}</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Est. profit</p>
-              <p className="mt-2 text-xl font-semibold text-milk-green-600">
-                {formatCurrency(selectedSummary.totalLitres * PROFIT_PER_LITRE)}
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Estimated profit</p>
+              <p className="mt-2 text-3xl font-semibold text-milk-green-600">
+                {formatCurrency((selectedSummary?.totalLitres ?? 0) * PROFIT_PER_LITRE)}
               </p>
             </div>
           </div>
         </Card>
-      ) : (
+
         <Card className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-700">No summary available for the selected date.</p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Monthly Snapshot</p>
+              {selectedMonthSummary ? (
+                <p className="mt-2 text-lg font-semibold text-gray-900">
+                  {formatMonthYear(selectedMonthSummary.year, selectedMonthSummary.month)}
+                </p>
+              ) : (
+                <p className="mt-2 text-lg font-semibold text-gray-900">No month data</p>
+              )}
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3 text-center">
+              <p className="text-xs uppercase tracking-wide text-gray-500">Active farmers</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{activeFarmers}</p>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Month total litres</p>
+              <p className="mt-2 text-3xl font-semibold text-gray-900">{selectedMonthSummary?.totalLitres ?? 0}L</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Gross payout</p>
+                <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(selectedMonthSummary?.totalPayouts ?? 0)}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Total advances</p>
+                <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(selectedMonthSummary?.totalAdvances ?? 0)}</p>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Net payout</p>
+                <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(selectedMonthSummary?.netLiability ?? 0)}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Est. business profit</p>
+                <p className="mt-2 text-xl font-semibold text-milk-green-600">{formatCurrency(selectedMonthSummary?.estimatedProfit ?? 0)}</p>
+              </div>
+            </div>
+          </div>
         </Card>
-      )}
+      </div>
 
       <Tabs defaultValue="daily">
         <TabsList>
-          <TabsTrigger value="daily">Daily Report</TabsTrigger>
+          <TabsTrigger value="daily">Daily Summary</TabsTrigger>
           <TabsTrigger value="monthly">Monthly Summary</TabsTrigger>
           <TabsTrigger value="farmerReports">Farmer Statements</TabsTrigger>
         </TabsList>
