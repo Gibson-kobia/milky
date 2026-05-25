@@ -172,6 +172,25 @@ CROSS JOIN LATERAL (
   SELECT buying_rate FROM settings LIMIT 1
 ) s;
 
+CREATE VIEW IF NOT EXISTS daily_summary_view AS
+SELECT
+  day AS report_date,
+  total_litres,
+  total_farmers,
+  total_advances,
+  total_payout
+FROM daily_collection_summary;
+
+CREATE VIEW IF NOT EXISTS monthly_summary_view AS
+SELECT
+  date_trunc('month', report_date) AS month,
+  SUM(total_litres) AS total_litres,
+  SUM(total_farmers) AS total_farmers,
+  SUM(total_advances) AS total_advances,
+  SUM(total_payout) AS total_payout
+FROM daily_summary_view
+GROUP BY date_trunc('month', report_date);
+
 -- Triggers for updated_at
 CREATE TRIGGER update_milk_deliveries_updated_at
   BEFORE UPDATE ON milk_deliveries

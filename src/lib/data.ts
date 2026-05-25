@@ -5,6 +5,7 @@ import type {
   Payment,
 } from '@/types';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { getMonthStartForDate } from '@/lib/utils';
 
 export const isBrowser = () => typeof window !== 'undefined';
 export const isOnline = () => isBrowser() && window.navigator.onLine;
@@ -154,22 +155,17 @@ export interface DailyCollectionSummary {
   totalPayout: number;
 }
 
-export async function fetchDailyCollectionAggregates(
-  startDate: string,
-  endDate: string
-): Promise<DailyCollectionSummary[]> {
-  const supabase = getSupabaseClient();
-  const { data, error } = await supabase
-    .from('daily_collection_summary')
-    .select('*')
-    .gte('day', startDate)
-    .lte('day', endDate)
-    .order('day', { ascending: false });
+export interface MonthlySummaryView {
+  month: string;
+  totalLitres: number;
+  totalFarmers: number;
+  totalAdvances: number;
+  totalPayout: number;
+}
 
-  if (error || !data) return [];
-  const rows = data as Record<string, unknown>[];
-  return rows.map((row) => ({
-    day: String(row.day),
+function convertDailySummaryRow(row: Record<string, unknown>): DailyCollectionSummary {
+  return {
+    day: String(row.report_date || row.day),
     totalLitres:
       typeof row.total_litres === 'string'
         ? parseFloat(row.total_litres)
@@ -186,7 +182,77 @@ export async function fetchDailyCollectionAggregates(
       typeof row.total_payout === 'string'
         ? parseFloat(row.total_payout)
         : Number(row.total_payout),
-  }));
+  };
+}
+
+function convertMonthlySummaryRow(row: Record<string, unknown>): MonthlySummaryView {
+  return {
+    month: String(row.month),
+    totalLitres:
+      typeof row.total_litres === 'string'
+        ? parseFloat(row.total_litres)
+        : Number(row.total_litres),
+    totalFarmers:
+      typeof row.total_farmers === 'string'
+        ? parseFloat(row.total_farmers)
+        : Number(row.total_farmers),
+    totalAdvances:
+      typeof row.total_advances === 'string'
+        ? parseFloat(row.total_advances)
+        : Number(row.total_advances),
+    totalPayout:
+      typeof row.total_payout === 'string'
+        ? parseFloat(row.total_payout)
+        : Number(row.total_payout),
+  };
+}
+
+export async function fetchDailyCollectionAggregates(
+  startDate: string,
+  endDate: string
+): Promise<DailyCollectionSummary[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('daily_summary_view')
+    .select('*')
+    .gte('report_date', startDate)
+    .lte('report_date', endDate)
+    .order('report_date', { ascending: false });
+
+  if (error || !data) return [];
+  const rows = data as Record<string, unknown>[];
+  return rows.map(convertDailySummaryRow);
+}
+
+export async function fetchDailySummaryByDate(
+  date: string
+): Promise<DailyCollectionSummary | null> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('daily_summary_view')
+    .select('*')
+    .eq('report_date', date)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return convertDailySummaryRow(data as Record<string, unknown>);
+}
+
+export async function fetchMonthlySummaryByMonth(
+  date: string
+): Promise<MonthlySummaryView | null> {
+  const supabase = getSupabaseClient();
+  const monthStart = new Date(getMonthStartForDate(date));
+  const monthStartString = monthStart.toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('monthly_summary_view')
+    .select('*')
+    .eq('month', monthStartString)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return convertMonthlySummaryRow(data as Record<string, unknown>);
 }
 
 export async function fetchDailyDeliveryAggregates(
