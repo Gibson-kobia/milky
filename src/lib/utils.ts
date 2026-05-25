@@ -97,6 +97,14 @@ export const getMonthStartString = () => {
   return `${year}-${month}-01`;
 };
 
+export const getMonthStartForDate = (dateString: string) => {
+  const date = parseISO(dateString);
+  if (!isValid(date)) return getMonthStartString();
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  return `${year}-${String(month).padStart(2, '0')}-01`;
+};
+
 export const getDaysInCurrentMonth = (): string[] => {
   const today = new Date();
   const year = today.getFullYear();

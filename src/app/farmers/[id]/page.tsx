@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { fetchDeliveriesForFarmer, fetchFarmerById, fetchLedgerEntriesInRange } from '@/lib/data';
 import { requireAuth } from '@/lib/auth';
 import {
-  calculateProfit,
   formatCurrency,
   formatDate,
   formatLitres,
@@ -57,8 +56,7 @@ export default function FarmerDetailPage(props: any) {
   );
 
   const monthlyPayout = monthlyLitres * 55;
-  const monthlyProfit = calculateProfit(monthlyLitres, 55, 70);
-
+  const monthlyProfit = monthlyLitres * 15;
   const monthlyAdvances = useMemo(
     () =>
       ledgerEntries
@@ -70,6 +68,8 @@ export default function FarmerDetailPage(props: any) {
         .reduce((sum, entry) => sum + entry.amount_kes, 0),
     [ledgerEntries]
   );
+
+  const monthlyFinalPayout = monthlyPayout - monthlyAdvances;
 
   const recentDeliveries = useMemo(
     () => [...deliveries].slice(-7).reverse(),
@@ -121,22 +121,26 @@ export default function FarmerDetailPage(props: any) {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-2xl border border-gray-200 bg-white p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Month to date litres</p>
               <p className="mt-2 text-2xl font-bold text-gray-900">{formatLitres(monthlyLitres)}</p>
             </div>
             <div className="rounded-2xl border border-gray-200 bg-white p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Est. payout</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Gross earnings</p>
               <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(monthlyPayout)}</p>
             </div>
             <div className="rounded-2xl border border-gray-200 bg-white p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Est. profit</p>
-              <p className="mt-2 text-2xl font-bold text-milk-green-600">{formatCurrency(monthlyProfit)}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Final payout</p>
+              <p className="mt-2 text-2xl font-bold text-milk-green-600">{formatCurrency(monthlyFinalPayout)}</p>
             </div>
             <div className="rounded-2xl border border-gray-200 bg-white p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Advances</p>
               <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(monthlyAdvances)}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Est. profit</p>
+              <p className="mt-2 text-2xl font-bold text-milk-green-600">{formatCurrency(monthlyProfit)}</p>
             </div>
           </div>
         </Card>
@@ -156,6 +160,9 @@ export default function FarmerDetailPage(props: any) {
                     </span>
                   </div>
                   <p className="mt-2 text-lg font-semibold text-gray-900">{formatLitres(delivery.litres)}</p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Earned: {formatCurrency(delivery.litres * 55)}
+                  </p>
                 </div>
               ))}
             </div>

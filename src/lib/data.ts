@@ -361,18 +361,19 @@ export async function fetchAdvancesForFarmer(
   farmerId: string,
   startDate: string,
   endDate: string
-) {
+): Promise<LedgerEntry[]> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
-    .from('advances')
+    .from('ledger_entries')
     .select('*')
     .eq('farmer_id', farmerId)
-    .gte('date', startDate)
-    .lte('date', endDate)
-    .order('date', { ascending: false });
+    .in('entry_type', ['advance_cash', 'advance_goods'])
+    .gte('transaction_date', startDate)
+    .lte('transaction_date', endDate)
+    .order('transaction_date', { ascending: false });
 
   if (error || !data) return [];
-  return (data as Record<string, unknown>[]).map(convertAdvanceRow);
+  return (data as Record<string, unknown>[]).map(convertLedgerEntryRow);
 }
 
 export async function addAdvance(

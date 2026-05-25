@@ -69,6 +69,13 @@ export default function AdvancesPage() {
               ))}
             </select>
           </label>
+          {farmerId ? (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => router.push(`/farmers/${farmerId}`)}>
+                View farmer record
+              </Button>
+            </div>
+          ) : null}
 
           <label className="flex flex-col gap-2">
             <span className="text-sm font-medium">Amount (KES)</span>

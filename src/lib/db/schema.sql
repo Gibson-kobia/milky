@@ -163,10 +163,11 @@ FROM (
   GROUP BY date
 ) md
 FULL OUTER JOIN (
-  SELECT date AS day, SUM(amount) AS total_advances
-  FROM advances
-  GROUP BY date
-) a USING (day)
+  SELECT transaction_date AS day, SUM(amount_kes) AS total_advances
+  FROM ledger_entries
+  WHERE entry_type IN ('advance_cash', 'advance_goods')
+  GROUP BY transaction_date
+) a ON md.day = a.day
 CROSS JOIN LATERAL (
   SELECT buying_rate FROM settings LIMIT 1
 ) s;

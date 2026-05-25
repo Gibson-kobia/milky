@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { fetchFarmerById, fetchAdvancesForFarmer, fetchDeliveriesForFarmer } from '@/lib/data';
-import type { MilkDelivery } from '@/types';
+import { formatCurrency, formatDate, getMonthStartForDate } from '@/lib/utils';
+import type { LedgerEntry, MilkDelivery } from '@/types';
 
 interface Props {
   farmerId: string;
@@ -14,25 +15,53 @@ interface Props {
 }
 
 export default function FarmerProfileModal({ farmerId, open, onOpenChange, selectedDate }: Props) {
-  const [advances, setAdvances] = useState<any[]>([]);
+  const [advances, setAdvances] = useState<LedgerEntry[]>([]);
   const [deliveries, setDeliveries] = useState<MilkDelivery[]>([]);
-  const [name, setName] = useState<string>('');
+  const [name, setName] = useState<string>('Farmer');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+
     const load = async () => {
-      const farmer = await fetchFarmerById(farmerId);
-      setName(farmer?.name ?? 'Farmer');
-      const start = selectedDate ? selectedDate : new Date().toISOString().split('T')[0];
-      const from = start;
-      const to = start;
-      const adv = await fetchAdvancesForFarmer(farmerId, from, to);
-      const dels = await fetchDeliveriesForFarmer(farmerId, from, to);
-      setAdvances(adv);
-      setDeliveries(dels);
+      setIsLoading(true);
+      try {
+        const farmer = await fetchFarmerById(farmerId);
+        setName(farmer?.name ?? 'Farmer');
+
+        const selected = selectedDate ?? new Date().toISOString().split('T')[0];
+        const from = getMonthStartForDate(selected);
+        const to = selected;
+
+        const [adv, dels] = await Promise.all([
+          fetchAdvancesForFarmer(farmerId, from, to),
+          fetchDeliveriesForFarmer(farmerId, from, to),
+        ]);
+
+        setAdvances(adv);
+        setDeliveries(dels.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
     };
+
     load();
   }, [open, farmerId, selectedDate]);
+
+  const monthlyLitres = useMemo(
+    () => deliveries.reduce((sum, delivery) => sum + delivery.litres, 0),
+    [deliveries]
+  );
+
+  const totalAdvances = useMemo(
+    () => advances.reduce((sum, advance) => sum + advance.amount_kes, 0),
+    [advances]
+  );
+
+  const grossEarnings = monthlyLitres * 55;
+  const finalPayout = grossEarnings - totalAdvances;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,43 +80,66 @@ export default function FarmerProfileModal({ farmerId, open, onOpenChange, selec
         </DialogHeader>
 
         <div className="space-y-6 pt-4">
-          {/* Advances Section */}
-          <div className="space-y-3">
-            <p className="label-operational">Advances</p>
-            {advances.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">No advances recorded</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Month litres</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{monthlyLitres}L</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Gross earnings</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(grossEarnings)}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Advances</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(totalAdvances)}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Final payout</p>
+              <p className="mt-2 text-2xl font-bold text-milk-green-600">{formatCurrency(finalPayout)}</p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <p className="text-sm font-semibold text-gray-700">Advances</p>
+            {isLoading ? (
+              <p className="mt-3 text-sm text-gray-600">Loading advances…</p>
+            ) : advances.length === 0 ? (
+              <p className="mt-3 text-sm text-gray-500 italic">No advances recorded yet.</p>
             ) : (
-              <div className="space-y-2">
-                {advances.map((a) => (
-                  <div
-                    key={a.id}
-                    className="flex items-start justify-between rounded-lg bg-gray-50 px-3 py-2.5 border border-gray-100"
-                  >
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500">{a.date}</p>
-                      {a.note && <p className="text-sm text-gray-700 mt-1">{a.note}</p>}
+              <div className="mt-3 space-y-3">
+                {advances.map((advance) => (
+                  <div key={advance.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-gray-900">
+                        {advance.entry_type === 'advance_cash' ? 'Cash' : 'Goods'}
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(advance.amount_kes)}</p>
                     </div>
-                    <p className="font-semibold text-gray-900 ml-2">{a.amount} KES</p>
+                    <p className="mt-1 text-xs text-gray-500">{formatDate(advance.transaction_date)}</p>
+                    {advance.description && (
+                      <p className="mt-2 text-sm text-gray-700">{advance.description}</p>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Deliveries Section */}
-          <div className="space-y-3">
-            <p className="label-operational">Recent Deliveries</p>
-            {deliveries.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">No deliveries recorded</p>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <p className="text-sm font-semibold text-gray-700">Recent deliveries</p>
+            {isLoading ? (
+              <p className="mt-3 text-sm text-gray-600">Loading deliveries…</p>
+            ) : deliveries.length === 0 ? (
+              <p className="mt-3 text-sm text-gray-500 italic">No deliveries recorded yet.</p>
             ) : (
-              <div className="space-y-2">
-                {deliveries.map((d) => (
-                  <div
-                    key={d.id}
-                    className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2.5 border border-gray-100"
-                  >
-                    <p className="text-sm text-gray-700">{d.date}</p>
-                    <p className="font-semibold text-gray-900">{d.litres}L</p>
+              <div className="mt-3 space-y-3">
+                {deliveries.slice(0, 7).map((delivery) => (
+                  <div key={delivery.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-gray-900">{formatDate(delivery.date)}</p>
+                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(delivery.litres * 55)}</p>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-700">{delivery.litres}L</p>
                   </div>
                 ))}
               </div>
