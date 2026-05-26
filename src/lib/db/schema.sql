@@ -184,10 +184,10 @@ FROM daily_collection_summary;
 CREATE VIEW IF NOT EXISTS monthly_summary_view AS
 SELECT
   date_trunc('month', report_date) AS month,
-  SUM(total_litres) AS total_litres,
-  SUM(total_farmers) AS total_farmers,
-  SUM(total_advances) AS total_advances,
-  SUM(total_payout) AS total_payout
+  COALESCE(SUM(total_litres), 0) AS total_litres,
+  COALESCE(SUM(total_farmers), 0) AS total_farmers,
+  COALESCE(SUM(total_advances), 0) AS total_advances,
+  COALESCE(SUM(total_payout), 0) AS total_payout
 FROM daily_summary_view
 GROUP BY date_trunc('month', report_date);
 

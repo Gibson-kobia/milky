@@ -11,12 +11,18 @@ export const isBrowser = () => typeof window !== 'undefined';
 export const isOnline = () => isBrowser() && window.navigator.onLine;
 
 function convertDeliveryRow(row: Record<string, unknown>): MilkDelivery {
+  // Safe numeric conversion
+  const safeNumber = (val: unknown): number => {
+    if (val === null || val === undefined) return 0;
+    const num = typeof val === 'string' ? parseFloat(val) : Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
   return {
     id: String(row.id),
     farmer_id: String(row.farmer_id),
     date: String(row.date),
-    litres:
-      typeof row.litres === 'string' ? parseFloat(row.litres) : Number(row.litres),
+    litres: safeNumber(row.litres),
     delivery_type: String(row.delivery_type) as MilkDelivery['delivery_type'],
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -25,14 +31,18 @@ function convertDeliveryRow(row: Record<string, unknown>): MilkDelivery {
 }
 
 function convertLedgerEntryRow(row: Record<string, unknown>): LedgerEntry {
+  // Safe numeric conversion
+  const safeNumber = (val: unknown): number => {
+    if (val === null || val === undefined) return 0;
+    const num = typeof val === 'string' ? parseFloat(val) : Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
   return {
     id: String(row.id),
     farmer_id: row.farmer_id ? String(row.farmer_id) : '',
     entry_type: String(row.entry_type) as LedgerEntry['entry_type'],
-    amount_kes:
-      typeof row.amount_kes === 'string'
-        ? parseFloat(row.amount_kes)
-        : Number(row.amount_kes),
+    amount_kes: safeNumber(row.amount_kes),
     description: row.description ? String(row.description) : null,
     created_at: String(row.created_at),
     created_by: row.created_by ? String(row.created_by) : null,
@@ -42,11 +52,17 @@ function convertLedgerEntryRow(row: Record<string, unknown>): LedgerEntry {
 }
 
 function convertPaymentRow(row: Record<string, unknown>): Payment {
+  // Safe numeric conversion
+  const safeNumber = (val: unknown): number => {
+    if (val === null || val === undefined) return 0;
+    const num = typeof val === 'string' ? parseFloat(val) : Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
   return {
     id: String(row.id),
     farmer_id: String(row.farmer_id),
-    amount:
-      typeof row.amount === 'string' ? parseFloat(row.amount) : Number(row.amount),
+    amount: safeNumber(row.amount),
     method: String(row.method) as Payment['method'],
     date: String(row.date),
     notes: row.notes ? String(row.notes) : null,
@@ -164,46 +180,36 @@ export interface MonthlySummaryView {
 }
 
 function convertDailySummaryRow(row: Record<string, unknown>): DailyCollectionSummary {
+  // Safe numeric conversion - ensures no NaN is returned
+  const safeNumber = (val: unknown): number => {
+    if (val === null || val === undefined) return 0;
+    const num = typeof val === 'string' ? parseFloat(val) : Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
   return {
     day: String(row.report_date || row.day),
-    totalLitres:
-      typeof row.total_litres === 'string'
-        ? parseFloat(row.total_litres)
-        : Number(row.total_litres),
-    totalFarmers:
-      typeof row.total_farmers === 'string'
-        ? parseFloat(row.total_farmers)
-        : Number(row.total_farmers),
-    totalAdvances:
-      typeof row.total_advances === 'string'
-        ? parseFloat(row.total_advances)
-        : Number(row.total_advances),
-    totalPayout:
-      typeof row.total_payout === 'string'
-        ? parseFloat(row.total_payout)
-        : Number(row.total_payout),
+    totalLitres: safeNumber(row.total_litres),
+    totalFarmers: safeNumber(row.total_farmers),
+    totalAdvances: safeNumber(row.total_advances),
+    totalPayout: safeNumber(row.total_payout),
   };
 }
 
 function convertMonthlySummaryRow(row: Record<string, unknown>): MonthlySummaryView {
+  // Safe numeric conversion - ensures no NaN is returned
+  const safeNumber = (val: unknown): number => {
+    if (val === null || val === undefined) return 0;
+    const num = typeof val === 'string' ? parseFloat(val) : Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
   return {
     month: String(row.month),
-    totalLitres:
-      typeof row.total_litres === 'string'
-        ? parseFloat(row.total_litres)
-        : Number(row.total_litres),
-    totalFarmers:
-      typeof row.total_farmers === 'string'
-        ? parseFloat(row.total_farmers)
-        : Number(row.total_farmers),
-    totalAdvances:
-      typeof row.total_advances === 'string'
-        ? parseFloat(row.total_advances)
-        : Number(row.total_advances),
-    totalPayout:
-      typeof row.total_payout === 'string'
-        ? parseFloat(row.total_payout)
-        : Number(row.total_payout),
+    totalLitres: safeNumber(row.total_litres),
+    totalFarmers: safeNumber(row.total_farmers),
+    totalAdvances: safeNumber(row.total_advances),
+    totalPayout: safeNumber(row.total_payout),
   };
 }
 
@@ -411,11 +417,17 @@ export async function saveMilkDelivery(
 
 // Add ledger/advance insert helper
 export function convertAdvanceRow(row: Record<string, unknown>) {
+  // Safe numeric conversion
+  const safeNumber = (val: unknown): number => {
+    if (val === null || val === undefined) return 0;
+    const num = typeof val === 'string' ? parseFloat(val) : Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
   return {
     id: String(row.id),
     farmer_id: String(row.farmer_id),
-    amount:
-      typeof row.amount === 'string' ? parseFloat(row.amount) : Number(row.amount),
+    amount: safeNumber(row.amount),
     date: String(row.date),
     note: row.note ? String(row.note) : null,
     created_at: String(row.created_at),
