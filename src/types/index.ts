@@ -2,7 +2,7 @@
 export interface Farmer {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
   active: boolean;
   evening_delivery_enabled: boolean;
   notes: string | null;

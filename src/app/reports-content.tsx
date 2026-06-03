@@ -240,25 +240,61 @@ export function ReportsContent() {
               <p className="text-gray-700">No deliveries recorded for the current reporting window.</p>
             </Card>
           ) : (
-            last7DailySummaries.map((report) => (
-              <Card key={report.day}>
-                <CardContent className="flex flex-col gap-4 p-4 sm:p-6 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{formatDate(report.day)}</p>
-                    <p className="mt-2 grid gap-2 text-sm text-gray-600 sm:grid-cols-2">
-                      <span>{report.totalLitres}L collected</span>
-                      <span>{report.totalFarmers} farmers delivered</span>
-                      <span>Payout: {formatCurrency(report.totalPayout)}</span>
-                      <span>Advances: {formatCurrency(report.totalAdvances)}</span>
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Download className="h-4 w-4" />
-                    <span className="hidden sm:inline">Export</span>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))
+            <>
+              <div className="space-y-3 lg:hidden">
+                {last7DailySummaries.map((report) => (
+                  <Card key={report.day}>
+                    <CardContent className="flex flex-col gap-4 p-4 sm:p-6 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{formatDate(report.day)}</p>
+                        <p className="mt-2 grid gap-2 text-sm text-gray-600 sm:grid-cols-2">
+                          <span>{report.totalLitres}L collected</span>
+                          <span>{report.totalFarmers} farmers delivered</span>
+                          <span>Payout: {formatCurrency(report.totalPayout)}</span>
+                          <span>Advances: {formatCurrency(report.totalAdvances)}</span>
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Download className="h-4 w-4" />
+                        <span className="hidden sm:inline">Export</span>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="hidden lg:block overflow-x-auto rounded-3xl border border-gray-200 bg-white">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Litres</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Farmers</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Payout</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Advances</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {last7DailySummaries.map((report) => (
+                      <tr key={report.day} className="hover:bg-gray-50">
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{formatDate(report.day)}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{report.totalLitres}L</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{report.totalFarmers}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{formatCurrency(report.totalPayout)}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{formatCurrency(report.totalAdvances)}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-right">
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Download className="h-4 w-4" />
+                            <span>Export</span>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </TabsContent>
 

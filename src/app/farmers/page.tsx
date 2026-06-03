@@ -145,10 +145,10 @@ export default function FarmersPage() {
                 )}
               </FormField>
 
-              <FormField label="Phone Number" required>
+              <FormField label="Phone Number (optional)">
                 <Input
                   {...form.register('phone')}
-                  placeholder="+254712345678"
+                  placeholder="+254712345678 or leave blank"
                   disabled={form.formState.isSubmitting}
                 />
                 {form.formState.errors.phone && (
@@ -220,7 +220,7 @@ export default function FarmersPage() {
                   <p className="font-medium text-gray-900 truncate">
                     {farmer.name}
                   </p>
-                  <p className="text-sm text-gray-600">{farmer.phone}</p>
+                  <p className="text-sm text-gray-600">{farmer.phone || 'No phone provided'}</p>
                   {farmer.notes && (
                     <p className="mt-1 text-xs text-gray-500">{farmer.notes}</p>
                   )}
@@ -261,7 +261,7 @@ export default function FarmersPage() {
               <Card key={farmer.id} className="p-4 sm:p-6">
                 <div>
                   <p className="font-medium text-gray-900">{farmer.name}</p>
-                  <p className="text-sm text-gray-600">{farmer.phone}</p>
+                  <p className="text-sm text-gray-600">{farmer.phone || 'No phone provided'}</p>
                 </div>
               </Card>
             ))}

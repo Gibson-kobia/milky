@@ -375,7 +375,7 @@ export async function addFarmer(
     .from('farmers')
     .insert({
       name,
-      phone,
+      phone: phone?.trim() || null,
       evening_delivery_enabled: eveningDeliveryEnabled,
       notes,
       active: true,

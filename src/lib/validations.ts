@@ -5,9 +5,13 @@ export const FarmerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   phone: z
     .string()
-    .regex(
-      /^(?:\+254|0)[17][0-9]{8}$/,
-      'Invalid Kenyan phone number format'
+    .optional()
+    .transform((value) => (value?.trim() ?? ''))
+    .refine(
+      (value) => value === '' || /^(?:\+254|0)[17][0-9]{8}$/.test(value),
+      {
+        message: 'Invalid Kenyan phone number format',
+      }
     ),
   evening_delivery_enabled: z.boolean().default(false),
   notes: z.string().optional().nullable(),

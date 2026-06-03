@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation';
 import {
   Home,
   Users,
-  FileText,
   BarChart3,
+  Gift,
   Settings,
   Menu,
   X,
@@ -16,10 +16,10 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 
 const navigationItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: Home },
+  { href: '/', label: 'Home', icon: Home },
   { href: '/farmers', label: 'Farmers', icon: Users },
-  { href: '/accounting', label: 'Accounting', icon: BarChart3 },
-  { href: '/reports', label: 'Reports', icon: FileText },
+  { href: '/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/advances', label: 'Advances', icon: Gift },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

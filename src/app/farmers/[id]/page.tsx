@@ -104,7 +104,7 @@ export default function FarmerDetailPage(props: any) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{farmer.name}</h1>
-          <p className="mt-1 text-sm text-gray-600">{farmer.phone}</p>
+          <p className="mt-1 text-sm text-gray-600">{farmer.phone || 'No phone provided'}</p>
         </div>
         <Button variant="outline" onClick={() => router.push('/farmers')}>
           Back
@@ -150,22 +150,47 @@ export default function FarmerDetailPage(props: any) {
           {recentDeliveries.length === 0 ? (
             <p className="text-sm text-gray-600">No deliveries recorded for this month yet.</p>
           ) : (
-            <div className="space-y-3">
-              {recentDeliveries.map((delivery) => (
-                <div key={delivery.id} className="rounded-2xl border border-gray-200 bg-white p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-gray-900">{formatDate(delivery.date)}</p>
-                    <span className="text-xs uppercase tracking-wide text-gray-500">
-                      {delivery.delivery_type}
-                    </span>
+            <>
+              <div className="space-y-3 lg:hidden">
+                {recentDeliveries.map((delivery) => (
+                  <div key={delivery.id} className="rounded-2xl border border-gray-200 bg-white p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-gray-900">{formatDate(delivery.date)}</p>
+                      <span className="text-xs uppercase tracking-wide text-gray-500">
+                        {delivery.delivery_type}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-lg font-semibold text-gray-900">{formatLitres(delivery.litres)}</p>
+                    <p className="mt-1 text-sm text-gray-600">
+                      Earned: {formatCurrency(delivery.litres * 55)}
+                    </p>
                   </div>
-                  <p className="mt-2 text-lg font-semibold text-gray-900">{formatLitres(delivery.litres)}</p>
-                  <p className="mt-1 text-sm text-gray-600">
-                    Earned: {formatCurrency(delivery.litres * 55)}
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+
+              <div className="hidden lg:block overflow-x-auto rounded-3xl border border-gray-200 bg-white">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Type</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Litres</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Earned</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {recentDeliveries.map((delivery) => (
+                      <tr key={delivery.id} className="hover:bg-gray-50">
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{formatDate(delivery.date)}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{delivery.delivery_type}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{formatLitres(delivery.litres)}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{formatCurrency(delivery.litres * 55)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </Card>
       </div>
