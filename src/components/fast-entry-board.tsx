@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getDateOffsetString, validateMilkQuantity, formatDateTime } from '@/lib/utils';
+import { getDateOffsetString, validateMilkQuantity } from '@/lib/utils';
 import type { Farmer, MilkDelivery } from '@/types';
 import FarmerProfileModal from './farmer-profile-modal';
 
@@ -85,13 +85,15 @@ export function FastEntryBoard({
     }
   };
 
-  const incrementEntry = (farmerId: string, amount: number) => {
-    setEntries((prev) => {
-      const current = typeof prev[farmerId] === 'number' ? prev[farmerId] : (selectedDeliveryForFarmer(farmerId)?.litres ?? 0);
-      const next = Math.round((current + amount) * 100) / 100;
-      if (!validateMilkQuantity(next)) return { ...prev, [farmerId]: next };
-      return { ...prev, [farmerId]: next };
-    });
+  const formatEditTime = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${hours}:${minutes}`;
+    } catch {
+      return '';
+    }
   };
 
   const setModalOpenFor = (farmerId: string | null) => {
@@ -217,15 +219,9 @@ export function FastEntryBoard({
                       className="w-full py-2 text-base"
                       disabled={isSubmitting || (isSaved && !editing[farmer.id])}
                     />
-                    <div className="flex gap-2 mt-2">
-                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 0.25)}>+0.25</Button>
-                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 0.5)}>+0.50</Button>
-                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 0.75)}>+0.75</Button>
-                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 1)}>+1.00</Button>
-                    </div>
                   </div>
 
-                  {/* Desktop: Input + Save Button Row */}
+                  {/* Desktop: Input Row */}
                   <div className="hidden sm:flex items-center gap-2">
                     <Input
                       ref={(el) => {
@@ -241,27 +237,16 @@ export function FastEntryBoard({
                       className="h-9 flex-1 text-center text-sm py-2"
                       disabled={isSubmitting || (isSaved && !editing[farmer.id])}
                     />
-                    <div className="flex gap-2 ml-2">
-                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 0.25)}>+0.25</Button>
-                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 0.5)}>+0.50</Button>
-                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 0.75)}>+0.75</Button>
-                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 1)}>+1.00</Button>
-                    </div>
                   </div>
 
                   {/* Status / Save Button */}
                   <div className="flex items-center justify-between sm:justify-end gap-2">
                     {isSaved ? (
-                      <div className="flex items-center gap-2 text-sm text-milk-green-700">
-                        <div className="flex items-center gap-1.5">
-                          <div className="flex items-center justify-center h-5 w-5 rounded bg-milk-green-50">
-                            <Check className="h-3.5 w-3.5 text-milk-green-600" />
-                          </div>
-                          <span className="font-medium hidden sm:inline">Saved</span>
-                        </div>
-                        {selectedDeliveryForFarmer(farmer.id)?.updated_at && (
-                          <span className="text-xs text-gray-500">Last edited {formatDateTime(selectedDeliveryForFarmer(farmer.id)!.updated_at)}</span>
-                        )}
+                      <div className="flex items-center gap-1.5 text-sm text-milk-green-700">
+                        <Check className="h-4 w-4 text-milk-green-600" />
+                        <span className="text-xs text-gray-600">
+                          {selectedDeliveryForFarmer(farmer.id)?.updated_at ? `Saved ${formatEditTime(selectedDeliveryForFarmer(farmer.id)!.updated_at)}` : 'Saved'}
+                        </span>
                       </div>
                     ) : hasRecentDelivery(farmer.id) ? (
                       <Badge variant="error" className="text-xs sm:text-sm">Missing</Badge>
