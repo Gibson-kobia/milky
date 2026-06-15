@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getDateOffsetString, validateMilkQuantity } from '@/lib/utils';
+import { getDateOffsetString, validateMilkQuantity, formatDateTime } from '@/lib/utils';
 import type { Farmer, MilkDelivery } from '@/types';
 import FarmerProfileModal from './farmer-profile-modal';
 
@@ -34,6 +34,7 @@ export function FastEntryBoard({
   const [entries, setEntries] = useState<Record<string, number>>({});
   const [modalFarmerId, setModalFarmerId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<Record<string, boolean>>({});
+  const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState('');
   const inputRefs = useRef<Record<string, HTMLInputElement>>({});
 
@@ -76,6 +77,23 @@ export function FastEntryBoard({
     }
   };
 
+  const toggleEdit = (farmerId: string, loadValue = false) => {
+    setEditing((prev) => ({ ...prev, [farmerId]: !prev[farmerId] }));
+    if (loadValue) {
+      const delivery = selectedDeliveryForFarmer(farmerId);
+      if (delivery) setEntries((prev) => ({ ...prev, [farmerId]: delivery.litres }));
+    }
+  };
+
+  const incrementEntry = (farmerId: string, amount: number) => {
+    setEntries((prev) => {
+      const current = typeof prev[farmerId] === 'number' ? prev[farmerId] : (selectedDeliveryForFarmer(farmerId)?.litres ?? 0);
+      const next = Math.round((current + amount) * 100) / 100;
+      if (!validateMilkQuantity(next)) return { ...prev, [farmerId]: next };
+      return { ...prev, [farmerId]: next };
+    });
+  };
+
   const setModalOpenFor = (farmerId: string | null) => {
     setModalFarmerId(farmerId);
   };
@@ -106,6 +124,8 @@ export function FastEntryBoard({
         delete next[farmerId];
         return next;
       });
+      // exit editing mode after save
+      setEditing((prev) => ({ ...prev, [farmerId]: false }));
 
       const nextIndex = filteredFarmers.findIndex((f) => f.id === farmerId) + 1;
       if (nextIndex < filteredFarmers.length) {
@@ -188,15 +208,21 @@ export function FastEntryBoard({
                         if (el) inputRefs.current[farmer.id] = el;
                       }}
                       type="number"
-                      step="0.5"
+                      step="0.25"
                       min="0"
                       placeholder="Enter litres"
                       value={currentEntry ?? ''}
                       onChange={(e) => handleInputChange(farmer.id, e.target.value)}
                       onKeyPress={(e) => handleKeyPress(e, farmer.id)}
                       className="w-full py-2 text-base"
-                      disabled={isSubmitting || isSaved}
+                      disabled={isSubmitting || (isSaved && !editing[farmer.id])}
                     />
+                    <div className="flex gap-2 mt-2">
+                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 0.25)}>+0.25</Button>
+                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 0.5)}>+0.50</Button>
+                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 0.75)}>+0.75</Button>
+                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 1)}>+1.00</Button>
+                    </div>
                   </div>
 
                   {/* Desktop: Input + Save Button Row */}
@@ -206,25 +232,36 @@ export function FastEntryBoard({
                         if (el) inputRefs.current[farmer.id] = el;
                       }}
                       type="number"
-                      step="0.5"
+                      step="0.25"
                       min="0"
                       placeholder="0"
                       value={currentEntry ?? ''}
                       onChange={(e) => handleInputChange(farmer.id, e.target.value)}
                       onKeyPress={(e) => handleKeyPress(e, farmer.id)}
                       className="h-9 flex-1 text-center text-sm py-2"
-                      disabled={isSubmitting || isSaved}
+                      disabled={isSubmitting || (isSaved && !editing[farmer.id])}
                     />
+                    <div className="flex gap-2 ml-2">
+                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 0.25)}>+0.25</Button>
+                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 0.5)}>+0.50</Button>
+                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 0.75)}>+0.75</Button>
+                      <Button size="sm" onClick={() => incrementEntry(farmer.id, 1)}>+1.00</Button>
+                    </div>
                   </div>
 
                   {/* Status / Save Button */}
                   <div className="flex items-center justify-between sm:justify-end gap-2">
                     {isSaved ? (
-                      <div className="flex items-center gap-1.5 text-sm text-milk-green-700">
-                        <div className="flex items-center justify-center h-5 w-5 rounded bg-milk-green-50">
-                          <Check className="h-3.5 w-3.5 text-milk-green-600" />
+                      <div className="flex items-center gap-2 text-sm text-milk-green-700">
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex items-center justify-center h-5 w-5 rounded bg-milk-green-50">
+                            <Check className="h-3.5 w-3.5 text-milk-green-600" />
+                          </div>
+                          <span className="font-medium hidden sm:inline">Saved</span>
                         </div>
-                        <span className="font-medium hidden sm:inline">Saved</span>
+                        {selectedDeliveryForFarmer(farmer.id)?.updated_at && (
+                          <span className="text-xs text-gray-500">Last edited {formatDateTime(selectedDeliveryForFarmer(farmer.id)!.updated_at)}</span>
+                        )}
                       </div>
                     ) : hasRecentDelivery(farmer.id) ? (
                       <Badge variant="error" className="text-xs sm:text-sm">Missing</Badge>
@@ -232,26 +269,34 @@ export function FastEntryBoard({
                       <Badge variant="outline" className="text-xs sm:text-sm text-gray-600">Pending</Badge>
                     )}
 
-                    {!isSaved && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleSubmit(farmer.id)}
-                        disabled={isSubmitting || isLoading || !currentEntry || currentEntry <= 0}
-                        className="sm:hidden"
-                      >
-                        {isSubmitting ? '...' : 'Save'}
+                    {isSaved && !editing[farmer.id] ? (
+                      <Button size="sm" onClick={() => { toggleEdit(farmer.id, true); }}>
+                        Edit
                       </Button>
-                    )}
-
-                    {!isSaved && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleSubmit(farmer.id)}
-                        disabled={isSubmitting || isLoading || !currentEntry || currentEntry <= 0}
-                        className="hidden sm:inline-flex"
-                      >
-                        {isSubmitting ? 'Saving...' : 'Save'}
-                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => handleSubmit(farmer.id)}
+                          disabled={isSubmitting || isLoading || !currentEntry || currentEntry <= 0}
+                          className="sm:hidden"
+                        >
+                          {isSubmitting ? '...' : 'Save'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleSubmit(farmer.id)}
+                          disabled={isSubmitting || isLoading || !currentEntry || currentEntry <= 0}
+                          className="hidden sm:inline-flex"
+                        >
+                          {isSubmitting ? 'Saving...' : 'Save'}
+                        </Button>
+                        {editing[farmer.id] && (
+                          <Button size="sm" variant="outline" onClick={() => setEditing((p) => ({ ...p, [farmer.id]: false }))}>
+                            Cancel
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

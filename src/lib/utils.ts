@@ -157,9 +157,11 @@ export const validatePin = (pin: string): boolean => {
 };
 
 export const validateMilkQuantity = (litres: number): boolean => {
-  if (litres <= 0) return false;
-  const remainder = litres % 1;
-  return remainder === 0 || remainder === 0.5;
+  if (typeof litres !== 'number' || isNaN(litres) || litres <= 0) return false;
+  // Accept quarter-litre increments (0.25, 0.5, 0.75, 1.00, ...)
+  // Multiply by 100 and ensure divisible by 25 to avoid floating point issues
+  const scaled = Math.round(litres * 100);
+  return scaled > 0 && scaled % 25 === 0;
 };
 
 // PIN hashing (basic - use bcrypt in production)
