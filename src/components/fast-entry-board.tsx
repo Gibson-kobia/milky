@@ -69,7 +69,9 @@ export function FastEntryBoard({
 
   const handleInputChange = (farmerId: string, value: string) => {
     const numValue = parseFloat(value);
-    if (value === '' || (numValue >= 0 && validateMilkQuantity(numValue))) {
+    // Allow any non-negative numeric input during typing (no validation)
+    // Validation happens only at save time
+    if (value === '' || numValue >= 0) {
       setEntries((prev) => ({
         ...prev,
         [farmerId]: numValue,
@@ -212,6 +214,7 @@ export function FastEntryBoard({
                       type="number"
                       step="0.25"
                       min="0"
+                      inputMode="decimal"
                       placeholder="Enter litres"
                       value={currentEntry ?? ''}
                       onChange={(e) => handleInputChange(farmer.id, e.target.value)}
@@ -230,6 +233,7 @@ export function FastEntryBoard({
                       type="number"
                       step="0.25"
                       min="0"
+                      inputMode="decimal"
                       placeholder="0"
                       value={currentEntry ?? ''}
                       onChange={(e) => handleInputChange(farmer.id, e.target.value)}
