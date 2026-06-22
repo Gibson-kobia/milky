@@ -248,7 +248,7 @@ export function ReportsContent() {
                       <div className="flex-1">
                         <p className="font-medium text-gray-900">{formatDate(report.day)}</p>
                         <p className="mt-2 grid gap-2 text-sm text-gray-600 sm:grid-cols-2">
-                          <span>{report.totalLitres}L collected</span>
+                          <span>{formatLitres(report.totalLitres)} collected</span>
                           <span>{report.totalFarmers} farmers delivered</span>
                           <span>Payout: {formatCurrency(report.totalPayout)}</span>
                           <span>Advances: {formatCurrency(report.totalAdvances)}</span>
@@ -279,7 +279,7 @@ export function ReportsContent() {
                     {last7DailySummaries.map((report) => (
                       <tr key={report.day} className="hover:bg-gray-50">
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{formatDate(report.day)}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{report.totalLitres}L</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{formatLitres(report.totalLitres)}</td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{report.totalFarmers}</td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{formatCurrency(report.totalPayout)}</td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{formatCurrency(report.totalAdvances)}</td>

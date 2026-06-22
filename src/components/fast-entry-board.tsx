@@ -69,6 +69,7 @@ export function FastEntryBoard({
 
   const handleInputChange = (farmerId: string, value: string) => {
     const numValue = parseFloat(value);
+    console.log('[Milk Delivery] input change', { farmerId, value, numValue });
     // Allow any non-negative numeric input during typing (no validation)
     // Validation happens only at save time
     if (value === '') {
@@ -113,6 +114,7 @@ export function FastEntryBoard({
 
   const handleSubmit = async (farmerId: string) => {
     const litres = entries[farmerId];
+    console.log('[Milk Delivery] submit attempt', { farmerId, selectedDate, litres });
     if (
       submitting[farmerId] ||
       pendingFlag ||
@@ -126,6 +128,7 @@ export function FastEntryBoard({
     setSubmitting((prev) => ({ ...prev, [farmerId]: true }));
     try {
       const existing = selectedDeliveryForFarmer(farmerId);
+      console.log('[Milk Delivery] existing delivery check', { existing });
       if (existing) {
         await onUpdateDelivery(existing.id, litres);
       } else {

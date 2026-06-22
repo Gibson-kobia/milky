@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS milk_deliveries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   farmer_id UUID NOT NULL REFERENCES farmers(id),
   date DATE NOT NULL,
-  litres DECIMAL(5,1) NOT NULL,
+  litres DECIMAL(6,2) NOT NULL,
   delivery_type VARCHAR(10) NOT NULL CHECK (delivery_type IN ('morning', 'evening')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS milk_deliveries (
   UNIQUE(farmer_id, date, delivery_type),
   CONSTRAINT valid_litres CHECK (
     litres > 0 AND
-    (litres::text ~ '^\d+$' OR litres::text ~ '^\d+\.5$')
+    litres::text ~ '^\d+(\.\d{1,2})?$'
   )
 );
 

@@ -15,7 +15,6 @@ export const metadata: Metadata = {
     { rel: 'icon', url: '/icons/icon-192x192.png' },
     { rel: 'icon', url: '/icons/icon-512x512.png' },
     { rel: 'apple-touch-icon', url: '/icons/apple-touch-icon.png' },
-    { rel: 'icon', url: '/icons/maskable-icon-512x512.png', purpose: 'maskable' },
   ],
   appleWebApp: {
     capable: true,

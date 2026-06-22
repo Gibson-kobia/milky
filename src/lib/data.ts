@@ -18,11 +18,18 @@ function convertDeliveryRow(row: Record<string, unknown>): MilkDelivery {
     return isNaN(num) ? 0 : num;
   };
 
+  const parsedLitres = safeNumber(row.litres);
+  console.log('[Milk Delivery] convertDeliveryRow', {
+    rawLitres: row.litres,
+    parsedLitres,
+    row,
+  });
+
   return {
     id: String(row.id),
     farmer_id: String(row.farmer_id),
     date: String(row.date),
-    litres: safeNumber(row.litres),
+    litres: parsedLitres,
     delivery_type: String(row.delivery_type) as MilkDelivery['delivery_type'],
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -134,7 +141,16 @@ export async function fetchDeliveriesByDate(date: string): Promise<MilkDelivery[
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.from('milk_deliveries').select('*').eq('date', date);
   if (error || !data) return [];
-  return (data as Record<string, unknown>[]).map(convertDeliveryRow);
+  const deliveries = (data as Record<string, unknown>[]).map(convertDeliveryRow);
+  console.log('[Milk Delivery] fetchDeliveriesByDate', {
+    date,
+    deliveries: deliveries.map((delivery) => ({
+      id: delivery.id,
+      litres: delivery.litres,
+      formatted: String(delivery.litres),
+    })),
+  });
+  return deliveries;
 }
 
 export async function fetchDeliveriesInRange(
@@ -149,7 +165,20 @@ export async function fetchDeliveriesInRange(
     .lte('date', endDate)
     .order('date', { ascending: true });
   if (error || !data) return [];
-  return (data as Record<string, unknown>[]).map(convertDeliveryRow);
+  const deliveries = (data as Record<string, unknown>[]).map(convertDeliveryRow);
+  console.log('[Milk Delivery] fetchDeliveriesInRange', {
+    startDate,
+    endDate,
+    deliveries: deliveries.map((delivery) => ({
+      id: delivery.id,
+      farmer_id: delivery.farmer_id,
+      date: delivery.date,
+      litres: delivery.litres,
+      formattedLitres: String(delivery.litres),
+      delivery_type: delivery.delivery_type,
+    })),
+  });
+  return deliveries;
 }
 
 export interface DailyDeliveryAggregate {
@@ -227,7 +256,13 @@ export async function fetchDailyCollectionAggregates(
 
   if (error || !data) return [];
   const rows = data as Record<string, unknown>[];
-  return rows.map(convertDailySummaryRow);
+  const summaries = rows.map(convertDailySummaryRow);
+  console.log('[Milk Delivery] fetchDailyCollectionAggregates', {
+    startDate,
+    endDate,
+    summaries,
+  });
+  return summaries;
 }
 
 export async function fetchDailySummaryByDate(
@@ -241,7 +276,9 @@ export async function fetchDailySummaryByDate(
     .maybeSingle();
 
   if (error || !data) return null;
-  return convertDailySummaryRow(data as Record<string, unknown>);
+  const summary = convertDailySummaryRow(data as Record<string, unknown>);
+  console.log('[Milk Delivery] fetchDailySummaryByDate', { date, summary });
+  return summary;
 }
 
 export async function fetchMonthlySummaryByMonth(
@@ -258,7 +295,13 @@ export async function fetchMonthlySummaryByMonth(
     .maybeSingle();
 
   if (error || !data) return null;
-  return convertMonthlySummaryRow(data as Record<string, unknown>);
+  const monthlySummary = convertMonthlySummaryRow(data as Record<string, unknown>);
+  console.log('[Milk Delivery] fetchMonthlySummaryByMonth', {
+    date,
+    monthStartString,
+    monthlySummary,
+  });
+  return monthlySummary;
 }
 
 export async function fetchDailyDeliveryAggregates(
@@ -331,7 +374,19 @@ export async function fetchDeliveriesForFarmer(
     .lte('date', endDate)
     .order('date', { ascending: true });
   if (error || !data) return [];
-  return (data as Record<string, unknown>[]).map(convertDeliveryRow);
+  const deliveries = (data as Record<string, unknown>[]).map(convertDeliveryRow);
+  console.log('[Milk Delivery] fetchDeliveriesForFarmer', {
+    farmerId,
+    startDate,
+    endDate,
+    deliveries: deliveries.map((delivery) => ({
+      id: delivery.id,
+      date: delivery.date,
+      litres: delivery.litres,
+      formatted: String(delivery.litres),
+    })),
+  });
+  return deliveries;
 }
 
 export async function fetchLedgerEntriesInRange(
@@ -405,11 +460,15 @@ export async function saveMilkDelivery(
     updated_at: new Date().toISOString(),
   } as Record<string, unknown>;
 
+  console.log('[Milk Delivery] saveMilkDelivery payload', payload);
+
   const { data, error } = await supabase
     .from('milk_deliveries')
     .upsert(payload, { onConflict: 'farmer_id,date,delivery_type' })
     .select()
     .single();
+
+  console.log('[Milk Delivery] saveMilkDelivery response', { data, error });
 
   if (error) throw error;
   return convertDeliveryRow(data as Record<string, unknown>);
@@ -504,12 +563,16 @@ export async function addLedgerEntry(
 
 export async function updateMilkDelivery(deliveryId: string, litres: number) {
   const supabase = getSupabaseClient();
+  console.log('[Milk Delivery] updateMilkDelivery payload', { deliveryId, litres });
+
   const { data, error } = await supabase
     .from('milk_deliveries')
     .update({ litres, updated_at: new Date().toISOString() })
     .eq('id', deliveryId)
     .select()
     .single();
+
+  console.log('[Milk Delivery] updateMilkDelivery response', { data, error });
 
   if (error) throw error;
   return convertDeliveryRow(data as Record<string, unknown>);

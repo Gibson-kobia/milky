@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { fetchFarmerById, fetchAdvancesForFarmer, fetchDeliveriesForFarmer } from '@/lib/data';
-import { formatCurrency, formatDate, getMonthStartForDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatLitres, getMonthStartForDate } from '@/lib/utils';
 import type { LedgerEntry, MilkDelivery } from '@/types';
 
 interface Props {
@@ -84,7 +84,7 @@ export default function FarmerProfileModal({ farmerId, open, onOpenChange, selec
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Month litres</p>
-              <p className="mt-3 text-3xl font-semibold text-gray-950">{monthlyLitres}L</p>
+              <p className="mt-3 text-3xl font-semibold text-gray-950">{formatLitres(monthlyLitres)}</p>
             </div>
             <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Gross earnings</p>
@@ -152,7 +152,7 @@ export default function FarmerProfileModal({ farmerId, open, onOpenChange, selec
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{formatDate(delivery.date)}</p>
-                        <p className="text-sm text-gray-600">{delivery.litres}L delivered</p>
+                        <p className="text-sm text-gray-600">{formatLitres(delivery.litres)} delivered</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs uppercase tracking-wide text-gray-500">Earned</p>

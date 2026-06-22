@@ -9,10 +9,13 @@ export const formatCurrency = (value: number) => {
 };
 
 export const formatLitres = (litres: number) => {
-  // Preserve exact values for litre quantities without rounding.
-  // Keep JavaScript's native representation for decimals like 8.25 and 8.75.
-  const formatted = Number.isFinite(litres) ? String(litres) : String(litres);
-  return `${formatted} L`;
+  if (!Number.isFinite(litres)) {
+    return `${String(litres)} L`;
+  }
+
+  // Normalize to 2 decimal places to avoid floating-point artifacts like 8.750000000000002.
+  const normalized = parseFloat(litres.toFixed(2));
+  return `${String(normalized)} L`;
 };
 
 export const formatDate = (date: string | Date) => {
