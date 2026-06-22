@@ -79,7 +79,16 @@ export default function AdvancesPage() {
 
           <label className="flex flex-col gap-2">
             <span className="text-sm font-medium">Amount (KES)</span>
-            <Input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
+            <Input
+              type="number"
+              step="any"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => {
+                const value = e.target.value;
+                setAmount(value === '' ? '' : Number(value));
+              }}
+            />
           </label>
 
           <label className="flex flex-col gap-2">

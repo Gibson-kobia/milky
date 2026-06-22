@@ -19,12 +19,9 @@ export const FarmerSchema = z.object({
 
 export type FarmerFormData = z.infer<typeof FarmerSchema>;
 
-// Milk quantity validation - only whole or .5 increments
+// Milk quantity validation - accept any positive decimal value
 const validateMilkQuantity = (value: number) => {
-  if (value <= 0) return false;
-  // Check if it's a whole number or ends with .5
-  const remainder = value % 1;
-  return remainder === 0 || remainder === 0.5;
+  return typeof value === 'number' && !Number.isNaN(value) && value > 0;
 };
 
 export const MilkDeliverySchema = z.object({
@@ -33,8 +30,7 @@ export const MilkDeliverySchema = z.object({
     .number()
     .positive('Litres must be greater than 0')
     .refine(validateMilkQuantity, {
-      message:
-        'Only whole litres or .5 increments allowed (e.g., 1, 1.5, 2, 2.5)',
+      message: 'Enter a valid positive number for litres',
     }),
   delivery_type: z.enum(['morning', 'evening']),
   date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/, 'Invalid date format'),

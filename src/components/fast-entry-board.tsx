@@ -71,7 +71,16 @@ export function FastEntryBoard({
     const numValue = parseFloat(value);
     // Allow any non-negative numeric input during typing (no validation)
     // Validation happens only at save time
-    if (value === '' || numValue >= 0) {
+    if (value === '') {
+      setEntries((prev) => {
+        const next = { ...prev };
+        delete next[farmerId];
+        return next;
+      });
+      return;
+    }
+
+    if (!Number.isNaN(numValue) && numValue >= 0) {
       setEntries((prev) => ({
         ...prev,
         [farmerId]: numValue,
@@ -212,7 +221,7 @@ export function FastEntryBoard({
                         if (el) inputRefs.current[farmer.id] = el;
                       }}
                       type="number"
-                      step="0.25"
+                        step="any"
                       min="0"
                       inputMode="decimal"
                       placeholder="Enter litres"
@@ -231,7 +240,7 @@ export function FastEntryBoard({
                         if (el) inputRefs.current[farmer.id] = el;
                       }}
                       type="number"
-                      step="0.25"
+                        step="any"
                       min="0"
                       inputMode="decimal"
                       placeholder="0"
