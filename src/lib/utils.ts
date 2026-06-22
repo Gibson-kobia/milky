@@ -9,7 +9,10 @@ export const formatCurrency = (value: number) => {
 };
 
 export const formatLitres = (litres: number) => {
-  return `${litres.toLocaleString('en-KE')} L`;
+  // Preserve exact values for litre quantities without rounding.
+  // Keep JavaScript's native representation for decimals like 8.25 and 8.75.
+  const formatted = Number.isFinite(litres) ? String(litres) : String(litres);
+  return `${formatted} L`;
 };
 
 export const formatDate = (date: string | Date) => {
