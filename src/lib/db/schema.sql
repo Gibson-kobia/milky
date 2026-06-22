@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS monthly_summaries (
   farmer_id UUID NOT NULL REFERENCES farmers(id),
   year INTEGER NOT NULL,
   month INTEGER NOT NULL CHECK (month >= 1 AND month <= 12),
-  total_litres DECIMAL(8,1) NOT NULL DEFAULT 0,
+  total_litres DECIMAL(8,2) NOT NULL DEFAULT 0,
   gross_earnings DECIMAL(12,2) NOT NULL DEFAULT 0,
   total_advances DECIMAL(12,2) NOT NULL DEFAULT 0,
   total_payouts DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -153,12 +153,12 @@ $$ LANGUAGE plpgsql;
 CREATE VIEW IF NOT EXISTS daily_collection_summary AS
 SELECT
   COALESCE(md.day, a.day) AS day,
-  COALESCE(md.total_litres, 0) AS total_litres,
+  COALESCE(md.total_litres, 0)::DECIMAL(8,2) AS total_litres,
   COALESCE(md.total_farmers, 0) AS total_farmers,
   COALESCE(a.total_advances, 0) AS total_advances,
-  (COALESCE(md.total_litres, 0) * COALESCE(s.buying_rate, 55.00) - COALESCE(a.total_advances, 0)) AS total_payout
+  (COALESCE(md.total_litres, 0)::DECIMAL(8,2) * COALESCE(s.buying_rate, 55.00) - COALESCE(a.total_advances, 0)) AS total_payout
 FROM (
-  SELECT date AS day, SUM(litres) AS total_litres, COUNT(DISTINCT farmer_id) AS total_farmers
+  SELECT date AS day, SUM(litres)::DECIMAL(8,2) AS total_litres, COUNT(DISTINCT farmer_id) AS total_farmers
   FROM milk_deliveries
   GROUP BY date
 ) md

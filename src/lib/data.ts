@@ -216,9 +216,16 @@ function convertDailySummaryRow(row: Record<string, unknown>): DailyCollectionSu
     return isNaN(num) ? 0 : num;
   };
 
+  const totalLitres = safeNumber(row.total_litres);
+  console.log('[Milk Delivery] convertDailySummaryRow raw values', {
+    rawTotal: row.total_litres,
+    parsedTotal: totalLitres,
+    formattedTotal: String(totalLitres),
+  });
+
   return {
     day: String(row.report_date || row.day),
-    totalLitres: safeNumber(row.total_litres),
+    totalLitres,
     totalFarmers: safeNumber(row.total_farmers),
     totalAdvances: safeNumber(row.total_advances),
     totalPayout: safeNumber(row.total_payout),
@@ -233,9 +240,16 @@ function convertMonthlySummaryRow(row: Record<string, unknown>): MonthlySummaryV
     return isNaN(num) ? 0 : num;
   };
 
+  const totalLitres = safeNumber(row.total_litres);
+  console.log('[Milk Delivery] convertMonthlySummaryRow raw values', {
+    rawTotal: row.total_litres,
+    parsedTotal: totalLitres,
+    formattedTotal: String(totalLitres),
+  });
+
   return {
     month: String(row.month),
-    totalLitres: safeNumber(row.total_litres),
+    totalLitres,
     totalFarmers: safeNumber(row.total_farmers),
     totalAdvances: safeNumber(row.total_advances),
     totalPayout: safeNumber(row.total_payout),

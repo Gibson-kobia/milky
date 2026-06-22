@@ -13,9 +13,20 @@ export const formatLitres = (litres: number) => {
     return `${String(litres)} L`;
   }
 
-  // Normalize to 2 decimal places to avoid floating-point artifacts like 8.750000000000002.
-  const normalized = parseFloat(litres.toFixed(2));
-  return `${String(normalized)} L`;
+  // CRITICAL: Preserve exact decimal values without any rounding.
+  // Direct String conversion avoids floating-point precision loss and keeps
+  // 8.75 as 8.75, not 8.8
+  const stringOutput = String(litres);
+
+  console.log('[Milk Delivery] formatLitres DEBUG', {
+    input: litres,
+    inputType: typeof litres,
+    inputBits: litres.toString(2),
+    stringOutput,
+    isInteger: Number.isInteger(litres),
+  });
+
+  return `${stringOutput} L`;
 };
 
 export const formatDate = (date: string | Date) => {

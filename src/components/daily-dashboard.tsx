@@ -35,6 +35,12 @@ export function DailyDashboard({
   todayLitres,
   todayFarmers,
 }: DailyDashboardProps) {
+  console.log('[Milk Delivery] DailyDashboard render', {
+    todayLitres,
+    todayLitresString: String(todayLitres),
+    formatted: formatLitres(todayLitres),
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-1">

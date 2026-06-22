@@ -165,12 +165,30 @@ export function HomeContent() {
   const selectedDeliveries = deliveries.filter(
     (d) => d.date === selectedDate && d.delivery_type === 'morning'
   );
-  const totalLitres = selectedDeliveries.reduce((sum, d) => sum + d.litres, 0);
-  console.log('[Milk Delivery] active selected deliveries', {
+  
+  // Aggregate with exact precision tracking
+  const totalLitres = selectedDeliveries.reduce((sum, d) => {
+    console.log('[Milk Delivery] aggregating delivery', {
+      farmer_id: d.farmer_id,
+      litres: d.litres,
+      formattedLitres: String(d.litres),
+      runningTotal: sum + d.litres,
+    });
+    return sum + d.litres;
+  }, 0);
+  
+  console.log('[Milk Delivery] active selected deliveries FINAL', {
     selectedDate,
-    selectedDeliveries,
-    totalLitres,
+    deliveryCount: selectedDeliveries.length,
+    deliveriesDetail: selectedDeliveries.map((d) => ({
+      farmer_id: d.farmer_id,
+      litres: d.litres,
+      formattedLitres: String(d.litres),
+    })),
+    rawTotalLitres: totalLitres,
+    formattedTotalLitres: String(totalLitres),
   });
+  
   const farmersDelivered = new Set(
     selectedDeliveries.map((d) => d.farmer_id)
   ).size;
