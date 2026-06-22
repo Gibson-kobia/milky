@@ -16,6 +16,10 @@ out/
 build/
 dist/
 
+# PWA build artifacts
+public/sw.js
+public/workbox-*.js
+
 # Environment variables
 .env
 .env.local

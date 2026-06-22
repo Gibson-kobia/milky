@@ -56,6 +56,17 @@
 
 html {
   @apply scroll-smooth;
+  overflow-x: hidden;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  width: 100vw;
+  overflow-x: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background-color: #ffffff;
+  color-scheme: light;
 }
 
 ::-webkit-scrollbar {

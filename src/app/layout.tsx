@@ -4,21 +4,31 @@ import '@/app/globals.css';
 import { ToastContainer } from '@/components/toast-container';
 import { BottomNavigation } from '@/components/bottom-navigation';
 import { Sidebar } from '@/components/sidebar';
+import { InstallPrompt } from '@/components/install-prompt';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
   title: 'Milky - Milk Collection & Farmer Payments',
   description: 'Fast operational milk collection and farmer payment management system',
-  icons: {
-    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🥛</text></svg>',
+  icons: [
+    { rel: 'icon', url: '/icons/icon-192x192.png' },
+    { rel: 'icon', url: '/icons/icon-512x512.png' },
+    { rel: 'apple-touch-icon', url: '/icons/apple-touch-icon.png' },
+    { rel: 'icon', url: '/icons/maskable-icon-512x512.png', purpose: 'maskable' },
+  ],
+  appleWebApp: {
+    capable: true,
+    title: 'Milky',
   },
+  manifest: '/manifest.json',
 };
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: '#16a34a',
 };
 
 export default function RootLayout({
@@ -28,7 +38,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="bg-white">
+      <body className="bg-white min-h-screen overflow-x-hidden">
         <div className="min-h-screen">
           <div className="lg:flex">
             <Sidebar />
@@ -41,6 +51,7 @@ export default function RootLayout({
         </div>
         <BottomNavigation />
         <ToastContainer />
+        <InstallPrompt />
       </body>
     </html>
   );
