@@ -27,7 +27,9 @@ CREATE TABLE IF NOT EXISTS milk_deliveries (
   UNIQUE(farmer_id, date, delivery_type),
   CONSTRAINT valid_litres CHECK (
     litres > 0 AND
-    litres::text ~ '^\d+(\.\d{1,2})?$'
+    -- Enforce quarter-step increments: .00, .25, .50, .75 only
+    -- Cast to DECIMAL, extract fractional part, multiply by 100, check if in (0, 25, 50, 75)
+    ((litres * 100)::INTEGER % 25) = 0
   )
 );
 
