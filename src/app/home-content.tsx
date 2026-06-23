@@ -123,7 +123,7 @@ export function HomeContent() {
 
   const handleUpdateDelivery = async (deliveryId: string, litres: number) => {
     if (isSaving) return;
-    console.log('[Milk Delivery] update request', { deliveryId, litres });
+    console.log('[TRACE] handleUpdateDelivery ENTRY', { deliveryId, litres, litresType: typeof litres, isSaving });
     setIsSaving(true);
     try {
       const updated = await updateMilkDelivery(deliveryId, litres);

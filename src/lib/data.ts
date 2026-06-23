@@ -19,9 +19,12 @@ function convertDeliveryRow(row: Record<string, unknown>): MilkDelivery {
   };
 
   const parsedLitres = safeNumber(row.litres);
-  console.log('[Milk Delivery] convertDeliveryRow', {
+  console.log('[TRACE] convertDeliveryRow parsing DB row', {
     rawLitres: row.litres,
+    rawLitresType: typeof row.litres,
     parsedLitres,
+    parsedType: typeof parsedLitres,
+    fractional: parsedLitres % 1,
     row,
   });
 
@@ -464,24 +467,29 @@ export async function saveMilkDelivery(
   date: string
 ) {
   const supabase = getSupabaseClient();
+  console.log('[TRACE] saveMilkDelivery ENTRY', { farmerId, litres, litresType: typeof litres, fractional: litres % 1 });
 
   // Use upsert to deterministically create-or-update a single row
+  // Validate before attempting to save - reject invalid fractional values
+  if (!validateMilkQuantity(litres)) {
+    console.log('[TRACE] saveMilkDelivery validation FAILED', { litres, fractional: litres % 1 });
+    throw new Error('Invalid milk quantity - allowed fractional increments: 0, .25, .5, .75');
+  }
+
+  const finalValue = Number.isInteger(litres) ? String(litres) : litres.toFixed(2);
+  console.log('[TRACE] saveMilkDelivery after toFixed', { litres, finalValue, finalValueType: typeof finalValue });
+
   const payload = {
     farmer_id: farmerId,
     // Store as a string with two decimal places to preserve exact decimal
     // representation when sending to Postgres numeric columns.
-    litres: Number.isInteger(litres) ? String(litres) : litres.toFixed(2),
+    litres: finalValue,
     delivery_type: deliveryType,
     date,
     updated_at: new Date().toISOString(),
   } as Record<string, unknown>;
 
-  // Validate before attempting to save - reject invalid fractional values
-  if (!validateMilkQuantity(Number(payload.litres as unknown as number))) {
-    throw new Error('Invalid milk quantity - allowed fractional increments: 0, .25, .5, .75');
-  }
-
-  console.log('[Milk Delivery] saveMilkDelivery payload', payload);
+  console.log('[TRACE] saveMilkDelivery sending to DB', payload);
 
   const { data, error } = await supabase
     .from('milk_deliveries')
@@ -489,7 +497,7 @@ export async function saveMilkDelivery(
     .select()
     .single();
 
-  console.log('[Milk Delivery] saveMilkDelivery response', { data, error });
+  console.log('[TRACE] saveMilkDelivery response from DB', { data, error, returnedLitres: data?.litres });
 
   if (error) throw error;
   return convertDeliveryRow(data as Record<string, unknown>);
@@ -584,21 +592,25 @@ export async function addLedgerEntry(
 
 export async function updateMilkDelivery(deliveryId: string, litres: number) {
   const supabase = getSupabaseClient();
-  console.log('[Milk Delivery] updateMilkDelivery payload', { deliveryId, litres });
+  console.log('[TRACE] updateMilkDelivery ENTRY', { deliveryId, litres, litresType: typeof litres, fractional: litres % 1 });
 
   // Validate before attempting to save - reject invalid fractional values
   if (!validateMilkQuantity(litres)) {
+    console.log('[TRACE] updateMilkDelivery validation FAILED', { litres, fractional: litres % 1 });
     throw new Error('Invalid milk quantity - allowed fractional increments: 0, .25, .5, .75');
   }
 
+  const finalValue = Number.isInteger(litres) ? String(litres) : litres.toFixed(2);
+  console.log('[TRACE] updateMilkDelivery after toFixed', { litres, finalValue, finalValueType: typeof finalValue });
+
   const { data, error } = await supabase
     .from('milk_deliveries')
-    .update({ litres: Number.isInteger(litres) ? String(litres) : litres.toFixed(2), updated_at: new Date().toISOString() })
+    .update({ litres: finalValue, updated_at: new Date().toISOString() })
     .eq('id', deliveryId)
     .select()
     .single();
 
-  console.log('[Milk Delivery] updateMilkDelivery response', { data, error });
+  console.log('[TRACE] updateMilkDelivery response from DB', { data, error, returnedLitres: data?.litres });
 
   if (error) throw error;
   return convertDeliveryRow(data as Record<string, unknown>);
