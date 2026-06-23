@@ -5,7 +5,7 @@ import type {
   Payment,
 } from '@/types';
 import { getSupabaseClient } from '@/lib/supabase/client';
-import { getMonthStartForDate } from '@/lib/utils';
+import { getMonthStartForDate, validateMilkQuantity } from '@/lib/utils';
 
 export const isBrowser = () => typeof window !== 'undefined';
 export const isOnline = () => isBrowser() && window.navigator.onLine;
@@ -468,11 +468,18 @@ export async function saveMilkDelivery(
   // Use upsert to deterministically create-or-update a single row
   const payload = {
     farmer_id: farmerId,
-    litres,
+    // Store as a string with two decimal places to preserve exact decimal
+    // representation when sending to Postgres numeric columns.
+    litres: Number.isInteger(litres) ? String(litres) : litres.toFixed(2),
     delivery_type: deliveryType,
     date,
     updated_at: new Date().toISOString(),
   } as Record<string, unknown>;
+
+  // Validate before attempting to save - reject invalid fractional values
+  if (!validateMilkQuantity(Number(payload.litres as unknown as number))) {
+    throw new Error('Invalid milk quantity - allowed fractional increments: 0, .25, .5, .75');
+  }
 
   console.log('[Milk Delivery] saveMilkDelivery payload', payload);
 
@@ -579,9 +586,14 @@ export async function updateMilkDelivery(deliveryId: string, litres: number) {
   const supabase = getSupabaseClient();
   console.log('[Milk Delivery] updateMilkDelivery payload', { deliveryId, litres });
 
+  // Validate before attempting to save - reject invalid fractional values
+  if (!validateMilkQuantity(litres)) {
+    throw new Error('Invalid milk quantity - allowed fractional increments: 0, .25, .5, .75');
+  }
+
   const { data, error } = await supabase
     .from('milk_deliveries')
-    .update({ litres, updated_at: new Date().toISOString() })
+    .update({ litres: Number.isInteger(litres) ? String(litres) : litres.toFixed(2), updated_at: new Date().toISOString() })
     .eq('id', deliveryId)
     .select()
     .single();

@@ -175,8 +175,15 @@ export const validatePin = (pin: string): boolean => {
 
 export const validateMilkQuantity = (litres: number): boolean => {
   if (typeof litres !== 'number' || isNaN(litres) || litres <= 0) return false;
-  // Accept any positive decimal volume
-  return true;
+
+  // Normalize fractional part to two-decimal precision to avoid
+  // floating point artifacts (e.g. 0.7499999999)
+  const fractional = Math.round((litres - Math.floor(litres)) * 100) / 100;
+
+  // Allowed fractional values: 0, 0.25, 0.5, 0.75
+  const allowed = [0, 0.25, 0.5, 0.75];
+
+  return allowed.includes(fractional);
 };
 
 // PIN hashing (basic - use bcrypt in production)
