@@ -9,13 +9,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { formatCurrency, formatDate, formatLitres } from '@/lib/utils';
 import {
+  fetchFarmerMonthHistory,
   fetchFarmerMonthlyStatement,
   fetchFarmerPaymentHistory,
   fetchMonthlyPayoutRows,
   fetchMonthlyPayoutSummary,
   saveFarmerPayment,
 } from '@/lib/data';
-import type { FarmerMonthlyStatement, MonthlyFarmerPayoutRow, MonthlyPayoutSummary, Payment } from '@/types';
+import type { FarmerMonthHistoryEntry, FarmerMonthlyStatement, MonthlyFarmerPayoutRow, MonthlyPayoutSummary, Payment } from '@/types';
 
 function getDefaultMonth() {
   const today = new Date();
@@ -40,6 +41,8 @@ export function MonthlyPayoutsContent() {
   const [paymentHistory, setPaymentHistory] = useState<Payment[]>([]);
   const [summary, setSummary] = useState<MonthlyPayoutSummary | null>(null);
   const [rows, setRows] = useState<MonthlyFarmerPayoutRow[]>([]);
+  const [historyEntries, setHistoryEntries] = useState<FarmerMonthHistoryEntry[]>([]);
+  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [paymentDate, setPaymentDate] = useState('');
@@ -89,12 +92,15 @@ export function MonthlyPayoutsContent() {
   const loadFarmerDetails = async (farmerId: string, month: string) => {
     setIsDetailLoading(true);
     try {
-      const [statementData, historyData] = await Promise.all([
+      const [statementData, historyData, historyEntriesData] = await Promise.all([
         fetchFarmerMonthlyStatement(farmerId, month),
         fetchFarmerPaymentHistory(farmerId),
+        fetchFarmerMonthHistory(farmerId),
       ]);
       setStatement(statementData);
       setPaymentHistory(historyData);
+      setHistoryEntries(historyEntriesData);
+      setExpandedMonth(null);
       setPaymentDate(statementData?.payment?.date ?? new Date().toISOString().slice(0, 10));
       setPaymentMethod(statementData?.payment?.method ?? 'cash');
       setPaymentNotes(statementData?.payment?.notes ?? '');
@@ -273,197 +279,331 @@ export function MonthlyPayoutsContent() {
             setSelectedRow(null);
             setStatement(null);
             setPaymentHistory([]);
+            setHistoryEntries([]);
+            setExpandedMonth(null);
           }
         }}
       >
-        <DialogContent className="max-w-5xl">
-          <DialogHeader>
-            <DialogTitle>{statement?.farmer_name ?? selectedRow?.farmer_name}</DialogTitle>
-            <DialogDescription>
-              Review payouts, deliveries, advances, and payment history for {monthLabel(detailMonth)}.
-            </DialogDescription>
-          </DialogHeader>
-
-          {isDetailLoading ? (
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-              Loading payout details...
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden p-0">
+          <div className="flex h-full max-h-[90vh] flex-col">
+            <div className="flex-shrink-0 border-b border-gray-200 px-6 py-4">
+              <DialogHeader>
+                <DialogTitle>{statement?.farmer_name ?? selectedRow?.farmer_name}</DialogTitle>
+                <DialogDescription>
+                  Review payouts, deliveries, advances, and payment history for {monthLabel(detailMonth)}.
+                </DialogDescription>
+              </DialogHeader>
             </div>
-          ) : statement ? (
-            <div className="space-y-6">
-              <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">{monthLabel(detailMonth)}</p>
-                  <p className="mt-1 text-sm text-gray-600">Switch months to review prior payout periods without changing historical records.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleDetailMonthChange(-1)}>
-                    <ChevronLeft className="mr-2 h-4 w-4" /> Previous
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDetailMonthChange(1)}>
-                    Next <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
 
-              <div className="grid gap-4 md:grid-cols-5">
-                <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total litres</p>
-                  <p className="mt-2 text-xl font-semibold text-gray-900">{formatLitres(statement.total_litres)}</p>
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {isDetailLoading ? (
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+                  Loading payout details...
                 </div>
-                <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Milk rate</p>
-                  <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.gross_amount / Math.max(statement.total_litres, 1))}</p>
-                </div>
-                <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Gross amount</p>
-                  <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.gross_amount)}</p>
-                </div>
-                <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total advances</p>
-                  <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.advances)}</p>
-                </div>
-                <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Net amount to pay</p>
-                  <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.net_amount)}</p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Delivery history</h3>
-                <div className="overflow-x-auto rounded-2xl border border-gray-200">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Type</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Litres</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 bg-white">
-                      {statement.deliveries.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="px-3 py-4 text-sm text-gray-600">No deliveries recorded for this month.</td>
-                        </tr>
-                      ) : (
-                        statement.deliveries.map((delivery) => (
-                          <tr key={delivery.id}>
-                            <td className="px-3 py-2 text-sm text-gray-700">{formatDate(delivery.date)}</td>
-                            <td className="px-3 py-2 text-sm text-gray-700">{delivery.delivery_type}</td>
-                            <td className="px-3 py-2 text-sm text-gray-700">{formatLitres(delivery.litres)}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Advance history</h3>
-                <div className="overflow-x-auto rounded-2xl border border-gray-200">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Amount</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 bg-white">
-                      {statement.advances_detail.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="px-3 py-4 text-sm text-gray-600">No advances recorded for this month.</td>
-                        </tr>
-                      ) : (
-                        statement.advances_detail.map((advance) => (
-                          <tr key={advance.id}>
-                            <td className="px-3 py-2 text-sm text-gray-700">{formatDate(advance.transaction_date)}</td>
-                            <td className="px-3 py-2 text-sm text-gray-700">{formatCurrency(advance.amount_kes)}</td>
-                            <td className="px-3 py-2 text-sm text-gray-700">{advance.description ?? '—'}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Payment history</h3>
-                <div className="overflow-x-auto rounded-2xl border border-gray-200">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Amount</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Method</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 bg-white">
-                      {paymentHistory.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="px-3 py-4 text-sm text-gray-600">No payments recorded for this farmer yet.</td>
-                        </tr>
-                      ) : (
-                        paymentHistory.map((payment) => (
-                          <tr key={payment.id}>
-                            <td className="px-3 py-2 text-sm text-gray-700">{formatDate(payment.date)}</td>
-                            <td className="px-3 py-2 text-sm text-gray-700">{formatCurrency(payment.amount)}</td>
-                            <td className="px-3 py-2 text-sm text-gray-700">{payment.method}</td>
-                            <td className="px-3 py-2 text-sm text-gray-700">{payment.notes ?? '—'}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {!statement.payment ? (
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              ) : statement ? (
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">Pay farmer</p>
-                      <p className="mt-1 text-sm text-gray-600">Record a new payment for this payout month.</p>
+                      <p className="text-sm font-semibold text-gray-900">{monthLabel(detailMonth)}</p>
+                      <p className="mt-1 text-sm text-gray-600">Switch months to review prior payout periods without changing historical records.</p>
                     </div>
-                    <div className="flex flex-col gap-2 lg:min-w-[320px]">
-                      <Input type="number" value={payAmount} onChange={(event) => setPayAmount(event.target.value)} placeholder="Amount" />
-                      <Input type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} />
-                      <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as 'cash' | 'mpesa')}>
-                        <option value="cash">Cash</option>
-                        <option value="mpesa">Mpesa</option>
-                      </select>
-                      <Input value={paymentNotes} onChange={(event) => setPaymentNotes(event.target.value)} placeholder="Payment notes" />
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleDetailMonthChange(-1)}>
+                        <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDetailMonthChange(1)}>
+                        Next <ChevronRight className="ml-2 h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="mt-4 flex justify-end">
-                    <Button onClick={handlePayFarmer} disabled={submitting || !paymentDate || !payAmount}>
-                      {submitting ? 'Saving…' : 'Pay Farmer'}
-                    </Button>
+
+                  <div className="grid gap-4 md:grid-cols-5">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total litres</p>
+                      <p className="mt-2 text-xl font-semibold text-gray-900">{formatLitres(statement.total_litres)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Milk rate</p>
+                      <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.gross_amount / Math.max(statement.total_litres, 1))}</p>
+                    </div>
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Gross amount</p>
+                      <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.gross_amount)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total advances</p>
+                      <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.advances)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Net amount to pay</p>
+                      <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.net_amount)}</p>
+                    </div>
                   </div>
+
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">History</h3>
+                    <div className="space-y-3">
+                      {historyEntries.map((entry) => {
+                        const isExpanded = expandedMonth === entry.month;
+                        const isCurrentMonth = entry.month === detailMonth;
+                        return (
+                          <div key={entry.month} className="rounded-2xl border border-gray-200 bg-white">
+                            <button
+                              type="button"
+                              className="flex w-full items-center justify-between px-4 py-3 text-left"
+                              onClick={() => setExpandedMonth(isExpanded ? null : entry.month)}
+                            >
+                              <div>
+                                <p className="font-semibold text-gray-900">{monthLabel(entry.month)}</p>
+                                <p className="mt-1 text-sm text-gray-600">{formatLitres(entry.totalLitres)} • {formatCurrency(entry.netAmount)}</p>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${entry.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                  {entry.paymentStatus}
+                                </span>
+                                <span className="text-sm font-medium text-milk-green-700">{isExpanded ? 'Hide' : 'Show'}</span>
+                              </div>
+                            </button>
+                            {isExpanded && (
+                              <div className="space-y-4 border-t border-gray-200 px-4 py-4">
+                                <div className="grid gap-3 sm:grid-cols-4">
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Litres</p>
+                                    <p className="mt-1 font-semibold text-gray-900">{formatLitres(entry.totalLitres)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Gross</p>
+                                    <p className="mt-1 font-semibold text-gray-900">{formatCurrency(entry.grossAmount)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Advances</p>
+                                    <p className="mt-1 font-semibold text-gray-900">{formatCurrency(entry.advances)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Net</p>
+                                    <p className="mt-1 font-semibold text-gray-900">{formatCurrency(entry.netAmount)}</p>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <p className="text-sm font-semibold text-gray-700">Deliveries</p>
+                                  <div className="overflow-x-auto rounded-xl border border-gray-200">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                      <thead className="bg-gray-50">
+                                        <tr>
+                                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Type</th>
+                                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Litres</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-200 bg-white">
+                                        {entry.deliveries.length === 0 ? (
+                                          <tr><td colSpan={3} className="px-3 py-3 text-sm text-gray-600">No deliveries.</td></tr>
+                                        ) : entry.deliveries.map((delivery) => (
+                                          <tr key={delivery.id}><td className="px-3 py-2 text-sm text-gray-700">{formatDate(delivery.date)}</td><td className="px-3 py-2 text-sm text-gray-700">{delivery.delivery_type}</td><td className="px-3 py-2 text-sm text-gray-700">{formatLitres(delivery.litres)}</td></tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <p className="text-sm font-semibold text-gray-700">Advances</p>
+                                  <div className="overflow-x-auto rounded-xl border border-gray-200">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                      <thead className="bg-gray-50">
+                                        <tr>
+                                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Amount</th>
+                                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Notes</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-200 bg-white">
+                                        {entry.advancesDetail.length === 0 ? (
+                                          <tr><td colSpan={3} className="px-3 py-3 text-sm text-gray-600">No advances.</td></tr>
+                                        ) : entry.advancesDetail.map((advance) => (
+                                          <tr key={advance.id}><td className="px-3 py-2 text-sm text-gray-700">{formatDate(advance.transaction_date)}</td><td className="px-3 py-2 text-sm text-gray-700">{formatCurrency(advance.amount_kes)}</td><td className="px-3 py-2 text-sm text-gray-700">{advance.description ?? '—'}</td></tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <p className="text-sm font-semibold text-gray-700">Payments</p>
+                                  <div className="overflow-x-auto rounded-xl border border-gray-200">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                      <thead className="bg-gray-50">
+                                        <tr>
+                                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Amount</th>
+                                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Method</th>
+                                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Notes</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-200 bg-white">
+                                        {entry.payments.length === 0 ? (
+                                          <tr><td colSpan={4} className="px-3 py-3 text-sm text-gray-600">No payments.</td></tr>
+                                        ) : entry.payments.map((payment) => (
+                                          <tr key={payment.id}><td className="px-3 py-2 text-sm text-gray-700">{formatDate(payment.date)}</td><td className="px-3 py-2 text-sm text-gray-700">{formatCurrency(payment.amount)}</td><td className="px-3 py-2 text-sm text-gray-700">{payment.method}</td><td className="px-3 py-2 text-sm text-gray-700">{payment.notes ?? '—'}</td></tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                {isCurrentMonth && (
+                                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                                    <p className="text-sm font-semibold text-gray-900">Current month payout</p>
+                                    <p className="mt-1 text-sm text-gray-600">Use the payment section below to record a payment for the currently selected month.</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Delivery history</h3>
+                    <div className="overflow-x-auto rounded-2xl border border-gray-200">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Type</th>
+                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Litres</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {statement.deliveries.length === 0 ? (
+                            <tr>
+                              <td colSpan={3} className="px-3 py-4 text-sm text-gray-600">No deliveries recorded for this month.</td>
+                            </tr>
+                          ) : (
+                            statement.deliveries.map((delivery) => (
+                              <tr key={delivery.id}>
+                                <td className="px-3 py-2 text-sm text-gray-700">{formatDate(delivery.date)}</td>
+                                <td className="px-3 py-2 text-sm text-gray-700">{delivery.delivery_type}</td>
+                                <td className="px-3 py-2 text-sm text-gray-700">{formatLitres(delivery.litres)}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Advance history</h3>
+                    <div className="overflow-x-auto rounded-2xl border border-gray-200">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Amount</th>
+                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {statement.advances_detail.length === 0 ? (
+                            <tr>
+                              <td colSpan={3} className="px-3 py-4 text-sm text-gray-600">No advances recorded for this month.</td>
+                            </tr>
+                          ) : (
+                            statement.advances_detail.map((advance) => (
+                              <tr key={advance.id}>
+                                <td className="px-3 py-2 text-sm text-gray-700">{formatDate(advance.transaction_date)}</td>
+                                <td className="px-3 py-2 text-sm text-gray-700">{formatCurrency(advance.amount_kes)}</td>
+                                <td className="px-3 py-2 text-sm text-gray-700">{advance.description ?? '—'}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Payment history</h3>
+                    <div className="overflow-x-auto rounded-2xl border border-gray-200">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Amount</th>
+                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Method</th>
+                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {paymentHistory.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="px-3 py-4 text-sm text-gray-600">No payments recorded for this farmer yet.</td>
+                            </tr>
+                          ) : (
+                            paymentHistory.map((payment) => (
+                              <tr key={payment.id}>
+                                <td className="px-3 py-2 text-sm text-gray-700">{formatDate(payment.date)}</td>
+                                <td className="px-3 py-2 text-sm text-gray-700">{formatCurrency(payment.amount)}</td>
+                                <td className="px-3 py-2 text-sm text-gray-700">{payment.method}</td>
+                                <td className="px-3 py-2 text-sm text-gray-700">{payment.notes ?? '—'}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {!statement.payment ? (
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">Pay farmer</p>
+                          <p className="mt-1 text-sm text-gray-600">Record a new payment for this payout month.</p>
+                        </div>
+                        <div className="flex flex-col gap-2 lg:min-w-[320px]">
+                          <Input type="number" value={payAmount} onChange={(event) => setPayAmount(event.target.value)} placeholder="Amount" />
+                          <Input type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} />
+                          <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as 'cash' | 'mpesa')}>
+                            <option value="cash">Cash</option>
+                            <option value="mpesa">Mpesa</option>
+                          </select>
+                          <Input value={paymentNotes} onChange={(event) => setPaymentNotes(event.target.value)} placeholder="Payment notes" />
+                        </div>
+                      </div>
+                      <div className="mt-4 flex justify-end">
+                        <Button onClick={handlePayFarmer} disabled={submitting || !paymentDate || !payAmount}>
+                          {submitting ? 'Saving…' : 'Pay Farmer'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+                      This payout month has already been recorded as paid.
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-                  This payout month has already been recorded as paid.
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+                  No payout details available for this farmer.
                 </div>
               )}
             </div>
-          ) : (
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-              No payout details available for this farmer.
-            </div>
-          )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setSelectedRow(null);
-              setStatement(null);
-              setPaymentHistory([]);
-            }}>
-              Close
-            </Button>
-          </DialogFooter>
+            <div className="flex-shrink-0 border-t border-gray-200 px-6 py-4">
+              <DialogFooter>
+                <Button variant="outline" onClick={() => {
+                  setSelectedRow(null);
+                  setStatement(null);
+                  setPaymentHistory([]);
+                  setHistoryEntries([]);
+                  setExpandedMonth(null);
+                }}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

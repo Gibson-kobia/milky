@@ -101,6 +101,18 @@ export interface FarmerMonthlyStatement {
   payment: Payment | null;
 }
 
+export interface FarmerMonthHistoryEntry {
+  month: string;
+  totalLitres: number;
+  grossAmount: number;
+  advances: number;
+  netAmount: number;
+  paymentStatus: 'PAID' | 'UNPAID';
+  deliveries: MilkDelivery[];
+  advancesDetail: LedgerEntry[];
+  payments: Payment[];
+}
+
 // Payment types
 export type PaymentMethod = 'cash' | 'mpesa';
 

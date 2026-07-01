@@ -1,5 +1,6 @@
 import type {
   Farmer,
+  FarmerMonthHistoryEntry,
   FarmerMonthlyStatement,
   LedgerEntry,
   MilkDelivery,
@@ -513,6 +514,68 @@ export async function fetchFarmerPaymentHistory(farmerId: string): Promise<Payme
     ...payment,
     amount: Number(Number(payment.amount ?? 0).toFixed(2)),
   }));
+}
+
+export async function fetchFarmerMonthHistory(farmerId: string): Promise<FarmerMonthHistoryEntry[]> {
+  const supabase = getSupabaseClient();
+  const buyingRate = await fetchBuyingRate();
+
+  const [deliveriesResult, advancesResult, paymentsResult] = await Promise.all([
+    supabase.from('milk_deliveries').select('*').eq('farmer_id', farmerId).order('date', { ascending: true }),
+    supabase.from('ledger_entries').select('*').eq('farmer_id', farmerId).in('entry_type', ['advance_cash', 'advance_goods']).order('transaction_date', { ascending: true }),
+    supabase.from('payments').select('*').eq('farmer_id', farmerId).order('date', { ascending: true }),
+  ]);
+
+  const deliveries = ((deliveriesResult.data as Record<string, unknown>[] | null) ?? []).map(convertDeliveryRow);
+  const advances = ((advancesResult.data as Record<string, unknown>[] | null) ?? []).map(convertLedgerEntryRow);
+  const payments = ((paymentsResult.data as Record<string, unknown>[] | null) ?? []).map(convertPaymentRow);
+
+  const monthMap = new Map<string, FarmerMonthHistoryEntry>();
+
+  const ensureMonth = (month: string) => {
+    if (!monthMap.has(month)) {
+      monthMap.set(month, {
+        month,
+        totalLitres: 0,
+        grossAmount: 0,
+        advances: 0,
+        netAmount: 0,
+        paymentStatus: 'UNPAID',
+        deliveries: [],
+        advancesDetail: [],
+        payments: [],
+      });
+    }
+    return monthMap.get(month)!;
+  };
+
+  deliveries.forEach((delivery) => {
+    const month = delivery.date.slice(0, 7);
+    const entry = ensureMonth(month);
+    entry.totalLitres += delivery.litres;
+    entry.deliveries.push(delivery);
+  });
+
+  advances.forEach((advance) => {
+    const month = advance.transaction_date.slice(0, 7);
+    const entry = ensureMonth(month);
+    entry.advances += advance.amount_kes;
+    entry.advancesDetail.push(advance);
+  });
+
+  payments.forEach((payment) => {
+    const month = payment.date.slice(0, 7);
+    const entry = ensureMonth(month);
+    entry.payments.push(payment);
+  });
+
+  Array.from(monthMap.values()).forEach((entry) => {
+    entry.grossAmount = Number((entry.totalLitres * buyingRate).toFixed(2));
+    entry.netAmount = Number((entry.grossAmount - entry.advances).toFixed(2));
+    entry.paymentStatus = entry.payments.length > 0 ? 'PAID' : 'UNPAID';
+  });
+
+  return Array.from(monthMap.values()).sort((left, right) => right.month.localeCompare(left.month));
 }
 
 export async function saveFarmerPayment(
