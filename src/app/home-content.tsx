@@ -91,7 +91,6 @@ export function HomeContent() {
     date: string
   ) => {
     if (isSaving) return;
-    console.log('[Milk Delivery] add request', { farmerId, litres, date });
     setIsSaving(true);
     try {
       const newDelivery = await saveMilkDelivery(
@@ -100,7 +99,6 @@ export function HomeContent() {
         'morning',
         date
       );
-      console.log('[Milk Delivery] add response', { newDelivery });
       startTransition(() => {
         setDeliveries((prev) => [
           ...prev.filter(
@@ -113,9 +111,8 @@ export function HomeContent() {
         ]);
       });
       success(`${litres}L saved`);
-    } catch (err) {
+    } catch {
       error('Failed to save delivery');
-      console.error('[Milk Delivery] add failed', err, { farmerId, litres, date });
     } finally {
       setIsSaving(false);
     }
@@ -123,11 +120,9 @@ export function HomeContent() {
 
   const handleUpdateDelivery = async (deliveryId: string, litres: number) => {
     if (isSaving) return;
-    console.log('[TRACE] handleUpdateDelivery ENTRY', { deliveryId, litres, litresType: typeof litres, isSaving });
     setIsSaving(true);
     try {
       const updated = await updateMilkDelivery(deliveryId, litres);
-      console.log('[Milk Delivery] update response', { updated });
       startTransition(() => {
         setDeliveries((prev) =>
           prev.map((delivery) =>
@@ -136,9 +131,8 @@ export function HomeContent() {
         );
       });
       success(`Updated to ${litres}L`);
-    } catch (err) {
+    } catch {
       error('Failed to update delivery');
-      console.error('[Milk Delivery] update failed', err, { deliveryId, litres });
     } finally {
       setIsSaving(false);
     }
@@ -165,29 +159,8 @@ export function HomeContent() {
   const selectedDeliveries = deliveries.filter(
     (d) => d.date === selectedDate && d.delivery_type === 'morning'
   );
-  
-  // Aggregate with exact precision tracking
-  const totalLitres = selectedDeliveries.reduce((sum, d) => {
-    console.log('[Milk Delivery] aggregating delivery', {
-      farmer_id: d.farmer_id,
-      litres: d.litres,
-      formattedLitres: String(d.litres),
-      runningTotal: sum + d.litres,
-    });
-    return sum + d.litres;
-  }, 0);
-  
-  console.log('[Milk Delivery] active selected deliveries FINAL', {
-    selectedDate,
-    deliveryCount: selectedDeliveries.length,
-    deliveriesDetail: selectedDeliveries.map((d) => ({
-      farmer_id: d.farmer_id,
-      litres: d.litres,
-      formattedLitres: String(d.litres),
-    })),
-    rawTotalLitres: totalLitres,
-    formattedTotalLitres: String(totalLitres),
-  });
+
+  const totalLitres = selectedDeliveries.reduce((sum, d) => sum + d.litres, 0);
   
   const farmersDelivered = new Set(
     selectedDeliveries.map((d) => d.farmer_id)

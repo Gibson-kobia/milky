@@ -23,14 +23,6 @@ function convertDeliveryRow(row: Record<string, unknown>): MilkDelivery {
   };
 
   const parsedLitres = safeNumber(row.litres);
-  console.log('[TRACE] convertDeliveryRow parsing DB row', {
-    rawLitres: row.litres,
-    rawLitresType: typeof row.litres,
-    parsedLitres,
-    parsedType: typeof parsedLitres,
-    fractional: parsedLitres % 1,
-    row,
-  });
 
   return {
     id: String(row.id),
@@ -149,14 +141,6 @@ export async function fetchDeliveriesByDate(date: string): Promise<MilkDelivery[
   const { data, error } = await supabase.from('milk_deliveries').select('*').eq('date', date);
   if (error || !data) return [];
   const deliveries = (data as Record<string, unknown>[]).map(convertDeliveryRow);
-  console.log('[Milk Delivery] fetchDeliveriesByDate', {
-    date,
-    deliveries: deliveries.map((delivery) => ({
-      id: delivery.id,
-      litres: delivery.litres,
-      formatted: String(delivery.litres),
-    })),
-  });
   return deliveries;
 }
 
@@ -173,18 +157,6 @@ export async function fetchDeliveriesInRange(
     .order('date', { ascending: true });
   if (error || !data) return [];
   const deliveries = (data as Record<string, unknown>[]).map(convertDeliveryRow);
-  console.log('[Milk Delivery] fetchDeliveriesInRange', {
-    startDate,
-    endDate,
-    deliveries: deliveries.map((delivery) => ({
-      id: delivery.id,
-      farmer_id: delivery.farmer_id,
-      date: delivery.date,
-      litres: delivery.litres,
-      formattedLitres: String(delivery.litres),
-      delivery_type: delivery.delivery_type,
-    })),
-  });
   return deliveries;
 }
 
@@ -224,11 +196,6 @@ function convertDailySummaryRow(row: Record<string, unknown>): DailyCollectionSu
   };
 
   const totalLitres = safeNumber(row.total_litres);
-  console.log('[Milk Delivery] convertDailySummaryRow raw values', {
-    rawTotal: row.total_litres,
-    parsedTotal: totalLitres,
-    formattedTotal: String(totalLitres),
-  });
 
   return {
     day: String(row.report_date || row.day),
@@ -248,11 +215,6 @@ function convertMonthlySummaryRow(row: Record<string, unknown>): MonthlySummaryV
   };
 
   const totalLitres = safeNumber(row.total_litres);
-  console.log('[Milk Delivery] convertMonthlySummaryRow raw values', {
-    rawTotal: row.total_litres,
-    parsedTotal: totalLitres,
-    formattedTotal: String(totalLitres),
-  });
 
   return {
     month: String(row.month),
@@ -278,11 +240,6 @@ export async function fetchDailyCollectionAggregates(
   if (error || !data) return [];
   const rows = data as Record<string, unknown>[];
   const summaries = rows.map(convertDailySummaryRow);
-  console.log('[Milk Delivery] fetchDailyCollectionAggregates', {
-    startDate,
-    endDate,
-    summaries,
-  });
   return summaries;
 }
 
@@ -298,7 +255,6 @@ export async function fetchDailySummaryByDate(
 
   if (error || !data) return null;
   const summary = convertDailySummaryRow(data as Record<string, unknown>);
-  console.log('[Milk Delivery] fetchDailySummaryByDate', { date, summary });
   return summary;
 }
 
@@ -317,11 +273,6 @@ export async function fetchMonthlySummaryByMonth(
 
   if (error || !data) return null;
   const monthlySummary = convertMonthlySummaryRow(data as Record<string, unknown>);
-  console.log('[Milk Delivery] fetchMonthlySummaryByMonth', {
-    date,
-    monthStartString,
-    monthlySummary,
-  });
   return monthlySummary;
 }
 
@@ -619,17 +570,6 @@ export async function fetchDeliveriesForFarmer(
     .order('date', { ascending: true });
   if (error || !data) return [];
   const deliveries = (data as Record<string, unknown>[]).map(convertDeliveryRow);
-  console.log('[Milk Delivery] fetchDeliveriesForFarmer', {
-    farmerId,
-    startDate,
-    endDate,
-    deliveries: deliveries.map((delivery) => ({
-      id: delivery.id,
-      date: delivery.date,
-      litres: delivery.litres,
-      formatted: String(delivery.litres),
-    })),
-  });
   return deliveries;
 }
 
@@ -694,17 +634,14 @@ export async function saveMilkDelivery(
   date: string
 ) {
   const supabase = getSupabaseClient();
-  console.log('[TRACE] saveMilkDelivery ENTRY', { farmerId, litres, litresType: typeof litres, fractional: litres % 1 });
 
   // Use upsert to deterministically create-or-update a single row
   // Validate before attempting to save - reject invalid fractional values
   if (!validateMilkQuantity(litres)) {
-    console.log('[TRACE] saveMilkDelivery validation FAILED', { litres, fractional: litres % 1 });
     throw new Error('Invalid milk quantity - allowed fractional increments: 0, .25, .5, .75');
   }
 
   const finalValue = Number.isInteger(litres) ? String(litres) : litres.toFixed(2);
-  console.log('[TRACE] saveMilkDelivery after toFixed', { litres, finalValue, finalValueType: typeof finalValue });
 
   const payload = {
     farmer_id: farmerId,
@@ -716,15 +653,11 @@ export async function saveMilkDelivery(
     updated_at: new Date().toISOString(),
   } as Record<string, unknown>;
 
-  console.log('[TRACE] saveMilkDelivery sending to DB', payload);
-
   const { data, error } = await supabase
     .from('milk_deliveries')
     .upsert(payload, { onConflict: 'farmer_id,date,delivery_type' })
     .select()
     .single();
-
-  console.log('[TRACE] saveMilkDelivery response from DB', { data, error, returnedLitres: data?.litres });
 
   if (error) throw error;
   return convertDeliveryRow(data as Record<string, unknown>);
@@ -819,16 +752,13 @@ export async function addLedgerEntry(
 
 export async function updateMilkDelivery(deliveryId: string, litres: number) {
   const supabase = getSupabaseClient();
-  console.log('[TRACE] updateMilkDelivery ENTRY', { deliveryId, litres, litresType: typeof litres, fractional: litres % 1 });
 
   // Validate before attempting to save - reject invalid fractional values
   if (!validateMilkQuantity(litres)) {
-    console.log('[TRACE] updateMilkDelivery validation FAILED', { litres, fractional: litres % 1 });
     throw new Error('Invalid milk quantity - allowed fractional increments: 0, .25, .5, .75');
   }
 
   const finalValue = Number.isInteger(litres) ? String(litres) : litres.toFixed(2);
-  console.log('[TRACE] updateMilkDelivery after toFixed', { litres, finalValue, finalValueType: typeof finalValue });
 
   const { data, error } = await supabase
     .from('milk_deliveries')
@@ -836,8 +766,6 @@ export async function updateMilkDelivery(deliveryId: string, litres: number) {
     .eq('id', deliveryId)
     .select()
     .single();
-
-  console.log('[TRACE] updateMilkDelivery response from DB', { data, error, returnedLitres: data?.litres });
 
   if (error) throw error;
   return convertDeliveryRow(data as Record<string, unknown>);

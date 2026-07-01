@@ -18,14 +18,6 @@ export const formatLitres = (litres: number) => {
   // 8.75 as 8.75, not 8.8
   const stringOutput = String(litres);
 
-  console.log('[Milk Delivery] formatLitres DEBUG', {
-    input: litres,
-    inputType: typeof litres,
-    inputBits: litres.toString(2),
-    stringOutput,
-    isInteger: Number.isInteger(litres),
-  });
-
   return `${stringOutput} L`;
 };
 
