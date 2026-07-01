@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, BarChart3, Gift, Settings } from 'lucide-react';
+import { Home, Users, BarChart3, Gift, Settings, Wallet } from 'lucide-react';
 
 export function BottomNavigation() {
   const pathname = usePathname();
@@ -11,6 +11,7 @@ export function BottomNavigation() {
     { href: '/', label: 'Home', icon: Home },
     { href: '/farmers', label: 'Farmers', icon: Users },
     { href: '/reports', label: 'Reports', icon: BarChart3 },
+    { href: '/monthly-payouts', label: 'Payouts', icon: Wallet },
     { href: '/advances', label: 'Advances', icon: Gift },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];

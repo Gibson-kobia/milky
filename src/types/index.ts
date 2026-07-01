@@ -61,6 +61,46 @@ export interface MonthlySummary {
   updated_at: string;
 }
 
+export interface MonthlyPayoutSummary {
+  month: string;
+  totalLitres: number;
+  totalGrossPayout: number;
+  totalAdvances: number;
+  totalNetPayout: number;
+  activeFarmers: number;
+  paidCount: number;
+  unpaidCount: number;
+}
+
+export interface MonthlyFarmerPayoutRow {
+  farmer_id: string;
+  farmer_name: string;
+  active: boolean;
+  total_litres: number;
+  milk_rate: number;
+  gross_amount: number;
+  advances: number;
+  net_amount: number;
+  payment_status: 'PAID' | 'UNPAID';
+  payment_date: string | null;
+  payment_method: string | null;
+  payment_notes: string | null;
+  payment_id: string | null;
+}
+
+export interface FarmerMonthlyStatement {
+  farmer_id: string;
+  farmer_name: string;
+  month: string;
+  total_litres: number;
+  gross_amount: number;
+  advances: number;
+  net_amount: number;
+  deliveries: MilkDelivery[];
+  advances_detail: LedgerEntry[];
+  payment: Payment | null;
+}
+
 // Payment types
 export type PaymentMethod = 'cash' | 'mpesa';
 

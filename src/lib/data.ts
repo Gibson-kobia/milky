@@ -377,6 +377,152 @@ export async function fetchDailyAdvanceAggregates(
   }));
 }
 
+export async function fetchBuyingRate(): Promise<number> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('settings')
+    .select('buying_rate')
+    .maybeSingle();
+
+  if (error || !data) return 55;
+  return Number(data.buying_rate ?? 55);
+}
+
+export async function fetchMonthlyPayoutSummary(month: string): Promise<MonthlyPayoutSummary | null> {
+  const supabase = getSupabaseClient();
+  const monthStart = `${month}-01`;
+  const year = Number(month.split('-')[0]);
+  const monthNumber = Number(month.split('-')[1]);
+  const nextMonthDate = new Date(Date.UTC(year, monthNumber, 1));
+  const monthEnd = `${nextMonthDate.getUTCFullYear()}-${String(nextMonthDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
+
+  const [monthlySummaryResult, activeFarmersResult, paymentsResult] = await Promise.all([
+    supabase.from('monthly_summary_view').select('*').eq('month', monthStart).maybeSingle(),
+    supabase.from('farmers').select('id', { count: 'exact' }).is('archived_at', null).eq('active', true),
+    supabase.from('payments').select('farmer_id').gte('date', monthStart).lt('date', monthEnd)
+  ]);
+
+  const monthlySummary = monthlySummaryResult.data as Record<string, unknown> | null;
+  const activeFarmers = activeFarmersResult.count ?? 0;
+  const payments = (paymentsResult.data as Array<Record<string, unknown>> | null) ?? [];
+  const paidFarmerIds = new Set(payments.map((payment) => String(payment.farmer_id)));
+
+  if (!monthlySummary) {
+    return {
+      month,
+      totalLitres: 0,
+      totalGrossPayout: 0,
+      totalAdvances: 0,
+      totalNetPayout: 0,
+      activeFarmers,
+      paidCount: paidFarmerIds.size,
+      unpaidCount: activeFarmers - paidFarmerIds.size,
+    };
+  }
+
+  const totalLitres = Number(monthlySummary.total_litres ?? 0);
+  const totalAdvances = Number(monthlySummary.total_advances ?? 0);
+  const totalNetPayout = Number(monthlySummary.total_payout ?? 0);
+  const buyingRate = await fetchBuyingRate();
+  const totalGrossPayout = Number((totalLitres * buyingRate).toFixed(2));
+
+  return {
+    month,
+    totalLitres,
+    totalGrossPayout,
+    totalAdvances,
+    totalNetPayout,
+    activeFarmers,
+    paidCount: paidFarmerIds.size,
+    unpaidCount: Math.max(activeFarmers - paidFarmerIds.size, 0),
+  };
+}
+
+export async function fetchMonthlyPayoutRows(month: string): Promise<MonthlyFarmerPayoutRow[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('get_monthly_payout_rows', { selected_month: month });
+  if (error || !data) return [];
+  return (data as MonthlyFarmerPayoutRow[]).map((row) => ({
+    ...row,
+    total_litres: Number(Number(row.total_litres ?? 0).toFixed(2)),
+    gross_amount: Number(Number(row.gross_amount ?? 0).toFixed(2)),
+    advances: Number(Number(row.advances ?? 0).toFixed(2)),
+    net_amount: Number(Number(row.net_amount ?? 0).toFixed(2)),
+    milk_rate: Number(Number(row.milk_rate ?? 0).toFixed(2)),
+  }));
+}
+
+export async function fetchFarmerMonthlyStatement(
+  farmerId: string,
+  month: string
+): Promise<FarmerMonthlyStatement | null> {
+  const supabase = getSupabaseClient();
+  const monthStart = `${month}-01`;
+  const year = Number(month.split('-')[0]);
+  const monthNumber = Number(month.split('-')[1]);
+  const nextMonthDate = new Date(Date.UTC(year, monthNumber, 1));
+  const monthEnd = `${nextMonthDate.getUTCFullYear()}-${String(nextMonthDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
+
+  const [farmerResult, deliveriesResult, advancesResult, paymentsResult] = await Promise.all([
+    supabase.from('farmers').select('*').eq('id', farmerId).maybeSingle(),
+    supabase.from('milk_deliveries').select('*').eq('farmer_id', farmerId).gte('date', monthStart).lt('date', monthEnd).order('date', { ascending: true }),
+    supabase.from('ledger_entries').select('*').eq('farmer_id', farmerId).in('entry_type', ['advance_cash', 'advance_goods']).gte('transaction_date', monthStart).lt('transaction_date', monthEnd).order('transaction_date', { ascending: true }),
+    supabase.from('payments').select('*').eq('farmer_id', farmerId).gte('date', monthStart).lt('date', monthEnd).maybeSingle(),
+  ]);
+
+  const farmer = farmerResult.data as Farmer | null;
+  const deliveries = (deliveriesResult.data as MilkDelivery[] | null) ?? [];
+  const advances = (advancesResult.data as LedgerEntry[] | null) ?? [];
+  const payment = paymentsResult.data as Payment | null;
+
+  if (!farmer) return null;
+
+  const buyingRate = await fetchBuyingRate();
+  const totalLitres = deliveries.reduce((sum, delivery) => sum + Number(delivery.litres ?? 0), 0);
+  const grossAmount = Number((totalLitres * buyingRate).toFixed(2));
+  const advancesAmount = advances.reduce((sum, entry) => sum + Number(entry.amount_kes ?? 0), 0);
+  const netAmount = Number((grossAmount - advancesAmount).toFixed(2));
+
+  return {
+    farmer_id: farmer.id,
+    farmer_name: farmer.name,
+    month,
+    total_litres: Number(totalLitres.toFixed(2)),
+    gross_amount: grossAmount,
+    advances: Number(advancesAmount.toFixed(2)),
+    net_amount: netAmount,
+    deliveries,
+    advances_detail: advances,
+    payment,
+  };
+}
+
+export async function saveFarmerPayment(
+  farmerId: string,
+  amount: number,
+  method: Payment['method'],
+  date: string,
+  notes: string | null = null
+): Promise<Payment> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('payments')
+    .insert({
+      farmer_id: farmerId,
+      amount,
+      method,
+      date,
+      notes,
+      created_at: new Date().toISOString(),
+      created_by: null,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Payment;
+}
+
 export async function fetchDeliveriesForFarmer(
   farmerId: string,
   startDate: string,

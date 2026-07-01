@@ -11,6 +11,7 @@ import {
   Settings,
   Menu,
   X,
+  Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
@@ -19,6 +20,7 @@ const navigationItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/farmers', label: 'Farmers', icon: Users },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/monthly-payouts', label: 'Monthly Payouts', icon: Wallet },
   { href: '/advances', label: 'Advances', icon: Gift },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
