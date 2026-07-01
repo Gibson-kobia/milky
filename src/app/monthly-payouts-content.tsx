@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight, CalendarDays, CheckCircle2, CircleDollarSign, FileText, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,6 @@ export function MonthlyPayoutsContent() {
   const [paymentDate, setPaymentDate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa'>('cash');
   const [paymentNotes, setPaymentNotes] = useState('');
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const monthFromUrl = searchParams?.get('month');
@@ -58,7 +57,6 @@ export function MonthlyPayoutsContent() {
 
   useEffect(() => {
     const loadData = async () => {
-      setError(null);
       try {
         const [rate, payoutSummary] = await Promise.all([
           fetchBuyingRate(),
@@ -68,7 +66,7 @@ export function MonthlyPayoutsContent() {
         setSummary(payoutSummary);
         setRows(await fetchMonthlyPayoutRows(selectedMonth));
       } catch (err) {
-        setError('Unable to load monthly payouts right now.');
+        console.error(err);
       }
     };
 
@@ -105,18 +103,11 @@ export function MonthlyPayoutsContent() {
       setStatement(refreshedStatement);
       setSelectedRow(refreshedRows.find((row) => row.farmer_id === selectedRow.farmer_id) ?? null);
     } catch (err) {
-      setError('Unable to save payment right now.');
+      console.error(err);
     } finally {
       setSubmitting(false);
     }
   };
-
-  const monthBefore = useMemo(() => {
-    const [year, monthNumber] = selectedMonth.split('-').map(Number);
-    const date = new Date(Date.UTC(year, monthNumber - 1, 1));
-    date.setUTCMonth(date.getUTCMonth() - 1);
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
-  }, [selectedMonth]);
 
   return (
     <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
