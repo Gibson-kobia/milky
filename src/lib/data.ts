@@ -500,6 +500,21 @@ export async function fetchFarmerMonthlyStatement(
   };
 }
 
+export async function fetchFarmerPaymentHistory(farmerId: string): Promise<Payment[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('farmer_id', farmerId)
+    .order('date', { ascending: false });
+
+  if (error || !data) return [];
+  return (data as Payment[]).map((payment) => ({
+    ...payment,
+    amount: Number(Number(payment.amount ?? 0).toFixed(2)),
+  }));
+}
+
 export async function saveFarmerPayment(
   farmerId: string,
   amount: number,
