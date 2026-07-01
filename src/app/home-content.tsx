@@ -46,10 +46,12 @@ export function HomeContent() {
       setIsLoading(true);
       try {
         const today = getCurrentDate();
-        const monthStart = getMonthStartString();
+        const currentDate = new Date();
+        const previousMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+        const previousMonthStartString = `${previousMonthStart.getFullYear()}-${String(previousMonthStart.getMonth() + 1).padStart(2, '0')}-01`;
         const [farmersData, deliveriesData] = await Promise.all([
           fetchFarmers(),
-          fetchDeliveriesInRange(monthStart, today),
+          fetchDeliveriesInRange(previousMonthStartString, today),
         ]);
 
         setFarmers(farmersData);
@@ -141,7 +143,10 @@ export function HomeContent() {
   const monthStart = getMonthStartString();
   const previousDate = getDateOffsetString(selectedDate, -1);
   const nextDate = getDateOffsetString(selectedDate, 1);
-  const canGoBack = previousDate >= monthStart;
+  const earliestAvailableDate = deliveries.length > 0
+    ? deliveries.reduce((earliest, delivery) => (delivery.date < earliest ? delivery.date : earliest), selectedDate)
+    : monthStart;
+  const canGoBack = previousDate >= earliestAvailableDate;
   const canGoForward = nextDate <= getCurrentDate();
 
   const updateDateInUrl = (value: string, replace = false) => {

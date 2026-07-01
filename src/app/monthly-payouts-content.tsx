@@ -11,7 +11,6 @@ import { formatCurrency, formatDate, formatLitres } from '@/lib/utils';
 import {
   fetchFarmerMonthHistory,
   fetchFarmerMonthlyStatement,
-  fetchFarmerPaymentHistory,
   fetchFarmerPaymentsForMonth,
   fetchMonthlyPayoutRows,
   fetchMonthlyPayoutSummary,

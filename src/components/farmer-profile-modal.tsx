@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { fetchFarmerById, fetchFarmerMonthHistory, fetchFarmerMonthlyStatement, fetchFarmerPaymentsForMonth } from '@/lib/data';
-import { formatCurrency, formatDate, formatLitres, getMonthStartForDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatLitres } from '@/lib/utils';
 import type { LedgerEntry, MilkDelivery } from '@/types';
 
 interface Props {
@@ -15,7 +15,7 @@ interface Props {
   selectedDate?: string;
 }
 
-export default function FarmerProfileModal({ farmerId, open, onOpenChange, selectedDate }: Props) {
+export default function FarmerProfileModal({ farmerId, open, onOpenChange }: Props) {
   const [advances, setAdvances] = useState<LedgerEntry[]>([]);
   const [deliveries, setDeliveries] = useState<MilkDelivery[]>([]);
   const [name, setName] = useState<string>('Farmer');

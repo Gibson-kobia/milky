@@ -395,16 +395,86 @@ export async function fetchMonthlyPayoutSummary(month: string): Promise<MonthlyP
 
 export async function fetchMonthlyPayoutRows(month: string): Promise<MonthlyFarmerPayoutRow[]> {
   const supabase = getSupabaseClient();
+  const monthStart = `${month}-01`;
+  const year = Number(month.split('-')[0]);
+  const monthNumber = Number(month.split('-')[1]);
+  const nextMonthDate = new Date(Date.UTC(year, monthNumber, 1));
+  const monthEnd = `${nextMonthDate.getUTCFullYear()}-${String(nextMonthDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
+
   const { data, error } = await supabase.rpc('get_monthly_payout_rows', { selected_month: month });
-  if (error || !data) return [];
-  return (data as MonthlyFarmerPayoutRow[]).map((row) => ({
-    ...row,
-    total_litres: Number(Number(row.total_litres ?? 0).toFixed(2)),
-    gross_amount: Number(Number(row.gross_amount ?? 0).toFixed(2)),
-    advances: Number(Number(row.advances ?? 0).toFixed(2)),
-    net_amount: Number(Number(row.net_amount ?? 0).toFixed(2)),
-    milk_rate: Number(Number(row.milk_rate ?? 0).toFixed(2)),
-  }));
+  if (!error && data && Array.isArray(data) && data.length > 0) {
+    return (data as MonthlyFarmerPayoutRow[]).map((row) => ({
+      ...row,
+      total_litres: Number(Number(row.total_litres ?? 0).toFixed(2)),
+      gross_amount: Number(Number(row.gross_amount ?? 0).toFixed(2)),
+      advances: Number(Number(row.advances ?? 0).toFixed(2)),
+      net_amount: Number(Number(row.net_amount ?? 0).toFixed(2)),
+      milk_rate: Number(Number(row.milk_rate ?? 0).toFixed(2)),
+    }));
+  }
+
+  const [{ data: farmersData }, { data: deliveriesData }, { data: advancesData }, { data: paymentsData }] = await Promise.all([
+    supabase.from('farmers').select('id, name, active').is('archived_at', null).eq('active', true),
+    supabase.from('milk_deliveries').select('*').gte('date', monthStart).lt('date', monthEnd),
+    supabase.from('ledger_entries').select('*').in('entry_type', ['advance_cash', 'advance_goods']).gte('transaction_date', monthStart).lt('transaction_date', monthEnd),
+    supabase.from('payments').select('*').gte('date', monthStart).lt('date', monthEnd),
+  ]);
+
+  const farmers = ((farmersData as Array<Pick<Farmer, 'id' | 'name' | 'active'>> | null) ?? []).filter((farmer) => farmer.active);
+  const deliveries = ((deliveriesData as MilkDelivery[] | null) ?? []);
+  const advances = ((advancesData as LedgerEntry[] | null) ?? []);
+  const payments = ((paymentsData as Payment[] | null) ?? []);
+
+  const deliveriesByFarmer = new Map<string, MilkDelivery[]>();
+  const advancesByFarmer = new Map<string, LedgerEntry[]>();
+  const paymentsByFarmer = new Map<string, Payment[]>();
+
+  deliveries.forEach((delivery) => {
+    const existing = deliveriesByFarmer.get(delivery.farmer_id) ?? [];
+    existing.push(delivery);
+    deliveriesByFarmer.set(delivery.farmer_id, existing);
+  });
+
+  advances.forEach((advance) => {
+    const existing = advancesByFarmer.get(advance.farmer_id) ?? [];
+    existing.push(advance);
+    advancesByFarmer.set(advance.farmer_id, existing);
+  });
+
+  payments.forEach((payment) => {
+    const existing = paymentsByFarmer.get(payment.farmer_id) ?? [];
+    existing.push(payment);
+    paymentsByFarmer.set(payment.farmer_id, existing);
+  });
+
+  const buyingRate = await fetchBuyingRate();
+
+  return farmers.map((farmer) => {
+    const farmerDeliveries = deliveriesByFarmer.get(farmer.id) ?? [];
+    const farmerAdvances = advancesByFarmer.get(farmer.id) ?? [];
+    const farmerPayments = paymentsByFarmer.get(farmer.id) ?? [];
+    const totalLitres = farmerDeliveries.reduce((sum, delivery) => sum + Number(delivery.litres ?? 0), 0);
+    const grossAmount = Number((totalLitres * buyingRate).toFixed(2));
+    const advancesTotal = farmerAdvances.reduce((sum, entry) => sum + Number(entry.amount_kes ?? 0), 0);
+    const netAmount = Number((grossAmount - advancesTotal).toFixed(2));
+    const payment = farmerPayments[0] ?? null;
+
+    return {
+      farmer_id: farmer.id,
+      farmer_name: farmer.name,
+      active: farmer.active,
+      total_litres: Number(totalLitres.toFixed(2)),
+      milk_rate: Number(buyingRate.toFixed(2)),
+      gross_amount: Number(grossAmount.toFixed(2)),
+      advances: Number(advancesTotal.toFixed(2)),
+      net_amount: Number(netAmount.toFixed(2)),
+      payment_status: payment ? 'PAID' : 'UNPAID',
+      payment_date: payment?.date ?? null,
+      payment_method: payment?.method ?? null,
+      payment_notes: payment?.notes ?? null,
+      payment_id: payment?.id ?? null,
+    } satisfies MonthlyFarmerPayoutRow;
+  }).sort((left, right) => left.farmer_name.localeCompare(right.farmer_name));
 }
 
 export async function fetchFarmerMonthlyStatement(
