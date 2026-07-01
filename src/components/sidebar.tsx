@@ -32,17 +32,17 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile Toggle */}
-      <div className="fixed bottom-6 right-6 z-40 sm:hidden">
+      <div className="fixed bottom-24 right-4 z-40 sm:hidden">
         <Button
           variant="default"
           size="icon"
           onClick={() => setIsOpen(!isOpen)}
-          className="rounded-full h-14 w-14 shadow-lg"
+          className="rounded-full h-12 w-12 shadow-lg"
         >
           {isOpen ? (
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           ) : (
-            <Menu className="h-6 w-6" />
+            <Menu className="h-5 w-5" />
           )}
         </Button>
       </div>
