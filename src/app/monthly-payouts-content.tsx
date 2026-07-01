@@ -12,6 +12,7 @@ import {
   fetchFarmerMonthHistory,
   fetchFarmerMonthlyStatement,
   fetchFarmerPaymentHistory,
+  fetchFarmerPaymentsForMonth,
   fetchMonthlyPayoutRows,
   fetchMonthlyPayoutSummary,
   saveFarmerPayment,
@@ -20,9 +21,10 @@ import type { FarmerMonthHistoryEntry, FarmerMonthlyStatement, MonthlyFarmerPayo
 
 function getDefaultMonth() {
   const today = new Date();
-  const month = today.getMonth();
-  const year = today.getFullYear();
-  return month === 0 ? `${year - 1}-12` : `${year}-${String(month).padStart(2, '0')}`;
+  const previousMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const year = previousMonth.getFullYear();
+  const month = String(previousMonth.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
 }
 
 function monthLabel(month: string) {
@@ -94,7 +96,7 @@ export function MonthlyPayoutsContent() {
     try {
       const [statementData, historyData, historyEntriesData] = await Promise.all([
         fetchFarmerMonthlyStatement(farmerId, month),
-        fetchFarmerPaymentHistory(farmerId),
+        fetchFarmerPaymentsForMonth(farmerId, month),
         fetchFarmerMonthHistory(farmerId),
       ]);
       setStatement(statementData);
@@ -104,7 +106,7 @@ export function MonthlyPayoutsContent() {
       setPaymentDate(statementData?.payment?.date ?? new Date().toISOString().slice(0, 10));
       setPaymentMethod(statementData?.payment?.method ?? 'cash');
       setPaymentNotes(statementData?.payment?.notes ?? '');
-      setPayAmount(statementData ? String(statementData.net_amount) : '');
+      setPayAmount(statementData ? String(Math.max(statementData.net_amount - historyData.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0), 0)) : '');
     } catch (err) {
       console.error(err);
     } finally {
@@ -295,16 +297,16 @@ export function MonthlyPayoutsContent() {
               <DialogHeader className="space-y-3">
                 <DialogTitle>{statement?.farmer_name ?? selectedRow?.farmer_name}</DialogTitle>
                 <DialogDescription>
-                  Review the selected month without leaving the payout screen.
+                  Review the selected month payout summary and delivery history before paying.
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => handleDetailMonthChange(-1)}>
-                    <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+                    <ChevronLeft className="mr-2 h-4 w-4" /> Previous Month
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => handleDetailMonthChange(1)}>
-                    Next <ChevronRight className="ml-2 h-4 w-4" />
+                    Next Month <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
                 <select
@@ -337,35 +339,70 @@ export function MonthlyPayoutsContent() {
                   <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">{monthLabel(detailMonth)}</p>
-                        <p className="mt-1 text-sm text-gray-600">Review deliveries, advances and payments for the selected month.</p>
+                        <p className="text-sm font-semibold text-gray-900">Previous month payout</p>
+                        <p className="mt-1 text-sm text-gray-600">{monthLabel(detailMonth)}</p>
                       </div>
                       <div className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
-                        {statement.payment ? 'Paid' : 'Pending'}
+                        {statement.payment ? 'Paid' : 'Unpaid'}
                       </div>
                     </div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-5">
                     <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Milk deliveries</p>
-                      <p className="mt-2 text-xl font-semibold text-gray-900">{formatLitres(statement.total_litres)}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Month</p>
+                      <p className="mt-2 text-xl font-semibold text-gray-900">{monthLabel(detailMonth)}</p>
                     </div>
                     <div className="rounded-2xl border border-gray-200 bg-white p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Milk rate</p>
                       <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.gross_amount / Math.max(statement.total_litres, 1))}</p>
                     </div>
                     <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total litres</p>
+                      <p className="mt-2 text-xl font-semibold text-gray-900">{formatLitres(statement.total_litres)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Advances</p>
                       <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.advances)}</p>
                     </div>
                     <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Previous payments</p>
-                      <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(previousPaymentsTotal)}</p>
-                    </div>
-                    <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Amount to pay</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Balance to pay</p>
                       <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(amountToPay)}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Previous month payout summary</p>
+                        <p className="mt-1 text-sm text-gray-600">Gross earnings, advances deducted, payments made, and final payout amount.</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Gross earnings</p>
+                        <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(statement.gross_amount)}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total litres</p>
+                        <p className="mt-1 text-lg font-semibold text-gray-900">{formatLitres(statement.total_litres)}</p>
+                      </div>
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Gross amount</p>
+                        <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(statement.gross_amount)}</p>
+                      </div>
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Advances</p>
+                        <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(statement.advances)}</p>
+                      </div>
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Payments made</p>
+                        <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(previousPaymentsTotal)}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Final amount to pay</p>
+                      <p className="mt-2 text-3xl font-semibold text-emerald-700">{formatCurrency(amountToPay)}</p>
                     </div>
                   </div>
 
@@ -492,7 +529,7 @@ export function MonthlyPayoutsContent() {
                   </div>
 
                   <div className="space-y-3">
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Milk deliveries</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Delivery history</h3>
                     <div className="overflow-x-auto rounded-2xl border border-gray-200">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -505,7 +542,7 @@ export function MonthlyPayoutsContent() {
                         <tbody className="divide-y divide-gray-200 bg-white">
                           {statement.deliveries.length === 0 ? (
                             <tr>
-                              <td colSpan={3} className="px-3 py-4 text-sm text-gray-600">No deliveries recorded for this month.</td>
+                              <td colSpan={3} className="px-3 py-4 text-sm text-gray-600">No deliveries for this month.</td>
                             </tr>
                           ) : (
                             statement.deliveries.map((delivery) => (
@@ -535,7 +572,7 @@ export function MonthlyPayoutsContent() {
                         <tbody className="divide-y divide-gray-200 bg-white">
                           {statement.advances_detail.length === 0 ? (
                             <tr>
-                              <td colSpan={3} className="px-3 py-4 text-sm text-gray-600">No advances recorded for this month.</td>
+                              <td colSpan={3} className="px-3 py-4 text-sm text-gray-600">No advances for this month.</td>
                             </tr>
                           ) : (
                             statement.advances_detail.map((advance) => (
@@ -566,7 +603,7 @@ export function MonthlyPayoutsContent() {
                         <tbody className="divide-y divide-gray-200 bg-white">
                           {paymentHistory.length === 0 ? (
                             <tr>
-                              <td colSpan={4} className="px-3 py-4 text-sm text-gray-600">No payments recorded for this farmer yet.</td>
+                              <td colSpan={4} className="px-3 py-4 text-sm text-gray-600">No payments for this month.</td>
                             </tr>
                           ) : (
                             paymentHistory.map((payment) => (

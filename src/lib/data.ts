@@ -467,6 +467,29 @@ export async function fetchFarmerPaymentHistory(farmerId: string): Promise<Payme
   }));
 }
 
+export async function fetchFarmerPaymentsForMonth(farmerId: string, month: string): Promise<Payment[]> {
+  const supabase = getSupabaseClient();
+  const monthStart = `${month}-01`;
+  const year = Number(month.split('-')[0]);
+  const monthNumber = Number(month.split('-')[1]);
+  const nextMonthDate = new Date(Date.UTC(year, monthNumber, 1));
+  const monthEnd = `${nextMonthDate.getUTCFullYear()}-${String(nextMonthDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
+
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('farmer_id', farmerId)
+    .gte('date', monthStart)
+    .lt('date', monthEnd)
+    .order('date', { ascending: true });
+
+  if (error || !data) return [];
+  return (data as Payment[]).map((payment) => ({
+    ...payment,
+    amount: Number(Number(payment.amount ?? 0).toFixed(2)),
+  }));
+}
+
 export async function fetchFarmerMonthHistory(farmerId: string): Promise<FarmerMonthHistoryEntry[]> {
   const supabase = getSupabaseClient();
   const buyingRate = await fetchBuyingRate();
