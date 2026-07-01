@@ -66,8 +66,8 @@ export default function FarmerProfileModal({ farmerId, open, onOpenChange, selec
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-hidden">
-        <DialogHeader className="border-b border-gray-100 pb-4">
+      <DialogContent className="max-w-md">
+        <DialogHeader className="flex-shrink-0 border-b border-gray-100 pb-4">
           <button
             onClick={() => onOpenChange(false)}
             className="absolute right-4 top-4 rounded-lg p-1 hover:bg-gray-100 transition-colors"
@@ -80,7 +80,7 @@ export default function FarmerProfileModal({ farmerId, open, onOpenChange, selec
           </p>
         </DialogHeader>
 
-        <div className="space-y-6 overflow-y-auto pb-4 pt-4 pr-2">
+        <div className="flex-1 space-y-6 overflow-y-auto pb-4 pr-2 pt-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Month litres</p>
