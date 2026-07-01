@@ -156,6 +156,11 @@ export function MonthlyPayoutsContent() {
     }
   };
 
+  const monthOptions = historyEntries.map((entry) => entry.month);
+  const previousPaymentsTotal = paymentHistory.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
+  const remainingBalance = Math.max(Number(statement?.net_amount ?? 0) - previousPaymentsTotal, 0);
+  const amountToPay = statement?.payment ? 0 : Math.max(remainingBalance, 0);
+
   return (
     <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -284,42 +289,66 @@ export function MonthlyPayoutsContent() {
           }
         }}
       >
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden p-0">
+        <DialogContent className="max-h-[90vh] max-w-[95vw] overflow-hidden p-0 sm:max-w-5xl">
           <div className="flex h-full max-h-[90vh] flex-col">
-            <div className="flex-shrink-0 border-b border-gray-200 px-6 py-4">
-              <DialogHeader>
+            <div className="sticky top-0 z-10 flex-shrink-0 border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
+              <DialogHeader className="space-y-3">
                 <DialogTitle>{statement?.farmer_name ?? selectedRow?.farmer_name}</DialogTitle>
                 <DialogDescription>
-                  Review payouts, deliveries, advances, and payment history for {monthLabel(detailMonth)}.
+                  Review the selected month without leaving the payout screen.
                 </DialogDescription>
               </DialogHeader>
+              <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleDetailMonthChange(-1)}>
+                    <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleDetailMonthChange(1)}>
+                    Next <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+                <select
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  value={detailMonth}
+                  onChange={(event) => {
+                    const nextMonth = event.target.value;
+                    setDetailMonth(nextMonth);
+                    if (selectedRow) {
+                      void loadFarmerDetails(selectedRow.farmer_id, nextMonth);
+                    }
+                  }}
+                >
+                  {(monthOptions.length > 0 ? monthOptions : [detailMonth]).map((month) => (
+                    <option key={month} value={month}>
+                      {monthLabel(month)}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
               {isDetailLoading ? (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
                   Loading payout details...
                 </div>
               ) : statement ? (
                 <div className="space-y-6">
-                  <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">{monthLabel(detailMonth)}</p>
-                      <p className="mt-1 text-sm text-gray-600">Switch months to review prior payout periods without changing historical records.</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleDetailMonthChange(-1)}>
-                        <ChevronLeft className="mr-2 h-4 w-4" /> Previous
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDetailMonthChange(1)}>
-                        Next <ChevronRight className="ml-2 h-4 w-4" />
-                      </Button>
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{monthLabel(detailMonth)}</p>
+                        <p className="mt-1 text-sm text-gray-600">Review deliveries, advances and payments for the selected month.</p>
+                      </div>
+                      <div className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
+                        {statement.payment ? 'Paid' : 'Pending'}
+                      </div>
                     </div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-5">
                     <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total litres</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Milk deliveries</p>
                       <p className="mt-2 text-xl font-semibold text-gray-900">{formatLitres(statement.total_litres)}</p>
                     </div>
                     <div className="rounded-2xl border border-gray-200 bg-white p-4">
@@ -327,21 +356,21 @@ export function MonthlyPayoutsContent() {
                       <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.gross_amount / Math.max(statement.total_litres, 1))}</p>
                     </div>
                     <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Gross amount</p>
-                      <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.gross_amount)}</p>
-                    </div>
-                    <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total advances</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Advances</p>
                       <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.advances)}</p>
                     </div>
                     <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Net amount to pay</p>
-                      <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(statement.net_amount)}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Previous payments</p>
+                      <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(previousPaymentsTotal)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Amount to pay</p>
+                      <p className="mt-2 text-xl font-semibold text-gray-900">{formatCurrency(amountToPay)}</p>
                     </div>
                   </div>
 
                   <div className="space-y-3">
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">History</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Month history</h3>
                     <div className="space-y-3">
                       {historyEntries.map((entry) => {
                         const isExpanded = expandedMonth === entry.month;
@@ -451,7 +480,7 @@ export function MonthlyPayoutsContent() {
                                 {isCurrentMonth && (
                                   <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
                                     <p className="text-sm font-semibold text-gray-900">Current month payout</p>
-                                    <p className="mt-1 text-sm text-gray-600">Use the payment section below to record a payment for the currently selected month.</p>
+                                    <p className="mt-1 text-sm text-gray-600">Use the payment controls at the bottom to record a payment for this month.</p>
                                   </div>
                                 )}
                               </div>
@@ -463,7 +492,7 @@ export function MonthlyPayoutsContent() {
                   </div>
 
                   <div className="space-y-3">
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Delivery history</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Milk deliveries</h3>
                     <div className="overflow-x-auto rounded-2xl border border-gray-200">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -493,7 +522,7 @@ export function MonthlyPayoutsContent() {
                   </div>
 
                   <div className="space-y-3">
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Advance history</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Advances</h3>
                     <div className="overflow-x-auto rounded-2xl border border-gray-200">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -523,7 +552,7 @@ export function MonthlyPayoutsContent() {
                   </div>
 
                   <div className="space-y-3">
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Payment history</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Previous payments</h3>
                     <div className="overflow-x-auto rounded-2xl border border-gray-200">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -553,35 +582,6 @@ export function MonthlyPayoutsContent() {
                       </table>
                     </div>
                   </div>
-
-                  {!statement.payment ? (
-                    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">Pay farmer</p>
-                          <p className="mt-1 text-sm text-gray-600">Record a new payment for this payout month.</p>
-                        </div>
-                        <div className="flex flex-col gap-2 lg:min-w-[320px]">
-                          <Input type="number" value={payAmount} onChange={(event) => setPayAmount(event.target.value)} placeholder="Amount" />
-                          <Input type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} />
-                          <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as 'cash' | 'mpesa')}>
-                            <option value="cash">Cash</option>
-                            <option value="mpesa">Mpesa</option>
-                          </select>
-                          <Input value={paymentNotes} onChange={(event) => setPaymentNotes(event.target.value)} placeholder="Payment notes" />
-                        </div>
-                      </div>
-                      <div className="mt-4 flex justify-end">
-                        <Button onClick={handlePayFarmer} disabled={submitting || !paymentDate || !payAmount}>
-                          {submitting ? 'Saving…' : 'Pay Farmer'}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-                      This payout month has already been recorded as paid.
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
@@ -590,8 +590,52 @@ export function MonthlyPayoutsContent() {
               )}
             </div>
 
-            <div className="flex-shrink-0 border-t border-gray-200 px-6 py-4">
-              <DialogFooter>
+            <div className="sticky bottom-0 z-10 flex-shrink-0 border-t border-gray-200 bg-white px-4 py-4 sm:px-6">
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Milk deliveries</p>
+                    <p className="mt-1 text-sm font-semibold text-gray-900">{statement ? formatLitres(statement.total_litres) : '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Advances</p>
+                    <p className="mt-1 text-sm font-semibold text-gray-900">{statement ? formatCurrency(statement.advances) : '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Previous payments</p>
+                    <p className="mt-1 text-sm font-semibold text-gray-900">{formatCurrency(previousPaymentsTotal)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Balance remaining</p>
+                    <p className="mt-1 text-sm font-semibold text-gray-900">{formatCurrency(remainingBalance)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Amount to pay</p>
+                    <p className="mt-1 text-sm font-semibold text-gray-900">{formatCurrency(amountToPay)}</p>
+                  </div>
+                  <div className="flex items-end justify-end">
+                    <Button onClick={handlePayFarmer} disabled={submitting || !paymentDate || !payAmount || !!statement?.payment}>
+                      {submitting ? 'Saving…' : 'Pay'}
+                    </Button>
+                  </div>
+                </div>
+                {!statement?.payment ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <Input type="number" value={payAmount} onChange={(event) => setPayAmount(event.target.value)} placeholder="Amount" />
+                    <Input type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} />
+                    <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as 'cash' | 'mpesa')}>
+                      <option value="cash">Cash</option>
+                      <option value="mpesa">Mpesa</option>
+                    </select>
+                    <Input value={paymentNotes} onChange={(event) => setPaymentNotes(event.target.value)} placeholder="Payment notes" />
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                    This payout month has already been recorded as paid.
+                  </div>
+                )}
+              </div>
+              <div className="mt-4 flex justify-end">
                 <Button variant="outline" onClick={() => {
                   setSelectedRow(null);
                   setStatement(null);
@@ -601,7 +645,7 @@ export function MonthlyPayoutsContent() {
                 }}>
                   Close
                 </Button>
-              </DialogFooter>
+              </div>
             </div>
           </div>
         </DialogContent>
