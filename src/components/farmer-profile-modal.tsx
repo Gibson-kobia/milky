@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { fetchFarmerById, fetchAdvancesForFarmer, fetchDeliveriesForFarmer } from '@/lib/data';
+import { Button } from '@/components/ui/button';
+import { fetchFarmerById, fetchFarmerMonthHistory, fetchFarmerMonthlyStatement, fetchFarmerPaymentsForMonth } from '@/lib/data';
 import { formatCurrency, formatDate, formatLitres, getMonthStartForDate } from '@/lib/utils';
 import type { LedgerEntry, MilkDelivery } from '@/types';
 
@@ -19,6 +20,17 @@ export default function FarmerProfileModal({ farmerId, open, onOpenChange, selec
   const [deliveries, setDeliveries] = useState<MilkDelivery[]>([]);
   const [name, setName] = useState<string>('Farmer');
   const [isLoading, setIsLoading] = useState(false);
+  const [monthOptions, setMonthOptions] = useState<string[]>([]);
+  const [detailMonth, setDetailMonth] = useState<string>(() => {
+    const today = new Date();
+    const previous = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const year = previous.getFullYear();
+    const month = String(previous.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  });
+  const [statement, setStatement] = useState<import('@/types').FarmerMonthlyStatement | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<import('@/types').Payment[]>([]);
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -29,17 +41,27 @@ export default function FarmerProfileModal({ farmerId, open, onOpenChange, selec
         const farmer = await fetchFarmerById(farmerId);
         setName(farmer?.name ?? 'Farmer');
 
-        const selected = selectedDate ?? new Date().toISOString().split('T')[0];
-        const from = getMonthStartForDate(selected);
-        const to = selected;
+        // Load month history (available months for this farmer)
+        const history = await fetchFarmerMonthHistory(farmerId);
+        const months = history.map((h) => h.month);
+        setMonthOptions(months);
 
-        const [adv, dels] = await Promise.all([
-          fetchAdvancesForFarmer(farmerId, from, to),
-          fetchDeliveriesForFarmer(farmerId, from, to),
-        ]);
+        // Choose a sensible default month:
+        // Prefer the previous calendar month; if that isn't available
+        // fall back to the most recent month that has data for the farmer.
+        const prevDefault = detailMonth;
+        const chosen = months.includes(prevDefault) ? prevDefault : (months[0] ?? prevDefault);
+        setDetailMonth(chosen);
 
-        setAdvances(adv);
-        setDeliveries(dels.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        // Load statement and payments for the chosen month
+        const stmt = await fetchFarmerMonthlyStatement(farmerId, chosen);
+        setStatement(stmt);
+        const payments = await fetchFarmerPaymentsForMonth(farmerId, chosen);
+        setPaymentHistory(payments);
+
+        // Also set advances/deliveries for the currently displayed month (if any)
+        setAdvances(stmt?.advances_detail ?? []);
+        setDeliveries(stmt?.deliveries?.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) ?? []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -47,8 +69,32 @@ export default function FarmerProfileModal({ farmerId, open, onOpenChange, selec
       }
     };
 
-    load();
-  }, [open, farmerId, selectedDate]);
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, farmerId]);
+
+  // Load details when user selects another month
+  useEffect(() => {
+    if (!open || !detailMonth) return;
+    const loadMonth = async () => {
+      setIsLoading(true);
+      try {
+        const stmt = await fetchFarmerMonthlyStatement(farmerId, detailMonth);
+        setStatement(stmt);
+        const payments = await fetchFarmerPaymentsForMonth(farmerId, detailMonth);
+        setPaymentHistory(payments);
+        setAdvances(stmt?.advances_detail ?? []);
+        setDeliveries(stmt?.deliveries?.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) ?? []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadMonth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailMonth, open, farmerId]);
 
   const monthlyLitres = useMemo(
     () => deliveries.reduce((sum, delivery) => sum + delivery.litres, 0),
@@ -79,6 +125,100 @@ export default function FarmerProfileModal({ farmerId, open, onOpenChange, selec
             Farmer ledger overview
           </p>
         </DialogHeader>
+
+        {/* Previous Month Payout section - shown first for paying farmers */}
+        <div className="mt-4 flex-shrink-0">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase text-gray-500">Previous Month Payout</p>
+              <p className="mt-1 text-sm font-medium text-gray-900">{detailMonth}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={async () => {
+                // go to previous month
+                const [year, monthNumber] = detailMonth.split('-').map(Number);
+                const current = new Date(Date.UTC(year, monthNumber - 1 - 1, 1));
+                const prev = `${current.getUTCFullYear()}-${String(current.getUTCMonth() + 1).padStart(2, '0')}`;
+                setDetailMonth(prev);
+              }}>Prev</Button>
+              <Button size="sm" variant="outline" onClick={async () => {
+                // go to next month
+                const [year, monthNumber] = detailMonth.split('-').map(Number);
+                const current = new Date(Date.UTC(year, monthNumber - 1 + 1, 1));
+                const next = `${current.getUTCFullYear()}-${String(current.getUTCMonth() + 1).padStart(2, '0')}`;
+                setDetailMonth(next);
+              }}>Next</Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowMonthPicker((s) => !s)}>View Another Month</Button>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Month</p>
+              <p className="mt-1 text-lg font-semibold text-gray-900">{detailMonth}</p>
+            </div>
+            <div className="rounded-3xl border border-gray-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Milk rate</p>
+              <p className="mt-1 text-lg font-semibold text-gray-900">{/* rate fetched from statement or default */}{/* show via statement.gross_amount / total litres when available */}
+                {statement ? (() => {
+                  const rate = statement.total_litres ? (Number(statement.gross_amount) / Number(statement.total_litres)) : 55;
+                  return `${Number(rate.toFixed(2))} KES`;
+                })() : '55 KES'}</p>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-3">
+            <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total litres</p>
+                  <p className="mt-1 text-lg font-semibold text-gray-900">{formatLitres(monthlyLitres)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Gross earnings</p>
+                  <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(grossEarnings)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Advances</p>
+                  <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(totalAdvances)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Payments</p>
+                  <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(paymentHistory.reduce((s, p) => s + Number(p.amount ?? 0), 0))}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Balance</p>
+                  <p className="mt-1 text-2xl font-extrabold text-milk-green-600">{formatCurrency(Math.max(finalPayout - paymentHistory.reduce((s, p) => s + Number(p.amount ?? 0), 0), 0))}</p>
+                  <div className="mt-1">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${paymentHistory.length > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                      {paymentHistory.length > 0 ? 'Paid' : 'Unpaid'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/** Month picker dropdown **/}
+          {showMonthPicker && (
+            <div className="mt-3">
+              <label className="sr-only">Select month</label>
+              <select
+                value={detailMonth}
+                onChange={(e) => setDetailMonth(e.target.value)}
+                className="w-full rounded-md border-gray-200 p-2"
+              >
+                {monthOptions.length === 0 ? (
+                  <option value={detailMonth}>{detailMonth}</option>
+                ) : (
+                  monthOptions.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))
+                )}
+              </select>
+            </div>
+          )}
+        </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto pb-4 pr-2 pt-4">
           <div className="grid gap-4 sm:grid-cols-2">
