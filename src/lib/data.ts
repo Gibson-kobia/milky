@@ -627,7 +627,8 @@ export async function saveFarmerPayment(
   amount: number,
   method: Payment['method'],
   date: string,
-  notes: string | null = null
+  notes: string | null = null,
+  createdBy: string | null = null
 ): Promise<Payment> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
@@ -639,7 +640,7 @@ export async function saveFarmerPayment(
       date,
       notes,
       created_at: new Date().toISOString(),
-      created_by: null,
+      created_by: createdBy,
     })
     .select()
     .single();

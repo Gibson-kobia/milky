@@ -10,8 +10,7 @@ import { DailyDashboard } from '@/components/daily-dashboard';
 import { useToast } from '@/lib/stores/ui';
 import {
   formatDateHeading,
-  getDateOffsetString,
-  getMonthStartString,
+  getAdjacentDateWithRecords,
   getCurrentDate,
 } from '@/lib/utils';
 import type { Farmer, MilkDelivery } from '@/types';
@@ -46,12 +45,9 @@ export function HomeContent() {
       setIsLoading(true);
       try {
         const today = getCurrentDate();
-        const currentDate = new Date();
-        const previousMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-        const previousMonthStartString = `${previousMonthStart.getFullYear()}-${String(previousMonthStart.getMonth() + 1).padStart(2, '0')}-01`;
         const [farmersData, deliveriesData] = await Promise.all([
           fetchFarmers(),
-          fetchDeliveriesInRange(previousMonthStartString, today),
+          fetchDeliveriesInRange('1900-01-01', today),
         ]);
 
         setFarmers(farmersData);
@@ -140,14 +136,14 @@ export function HomeContent() {
     }
   };
 
-  const monthStart = getMonthStartString();
-  const previousDate = getDateOffsetString(selectedDate, -1);
-  const nextDate = getDateOffsetString(selectedDate, 1);
-  const earliestAvailableDate = deliveries.length > 0
-    ? deliveries.reduce((earliest, delivery) => (delivery.date < earliest ? delivery.date : earliest), selectedDate)
-    : monthStart;
-  const canGoBack = previousDate >= earliestAvailableDate;
-  const canGoForward = nextDate <= getCurrentDate();
+  const recordDates = useMemo(
+    () => Array.from(new Set(deliveries.map((delivery) => delivery.date))).sort(),
+    [deliveries]
+  );
+  const previousDate = getAdjacentDateWithRecords(selectedDate, 'previous', recordDates);
+  const nextDate = getAdjacentDateWithRecords(selectedDate, 'next', recordDates);
+  const canGoBack = previousDate !== selectedDate;
+  const canGoForward = nextDate !== selectedDate;
 
   const updateDateInUrl = (value: string, replace = false) => {
     const url = `/?date=${value}`;
@@ -156,7 +152,7 @@ export function HomeContent() {
   };
 
   const handleDateChange = (value: string) => {
-    if (value < monthStart || value > getCurrentDate()) return;
+    if (value > getCurrentDate()) return;
     setSelectedDate(value);
     updateDateInUrl(value);
   };

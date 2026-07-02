@@ -63,6 +63,22 @@ export const getDateOffsetString = (dateString: string, offset: number) => {
   return format(next, 'yyyy-MM-dd');
 };
 
+export const getAdjacentDateWithRecords = (
+  currentDate: string,
+  direction: 'previous' | 'next',
+  availableDates: string[]
+) => {
+  const uniqueDates = Array.from(new Set(availableDates.filter(Boolean))).sort();
+
+  if (uniqueDates.length === 0) return currentDate;
+
+  if (direction === 'previous') {
+    return [...uniqueDates].reverse().find((date) => date < currentDate) ?? uniqueDates[0];
+  }
+
+  return uniqueDates.find((date) => date > currentDate) ?? uniqueDates[uniqueDates.length - 1];
+};
+
 export const formatDisplayDate = (dateString: string) => {
   const date = parseISO(dateString);
   if (!isValid(date)) return dateString;
