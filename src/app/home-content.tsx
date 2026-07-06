@@ -5,13 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { FastEntryBoard } from '@/components/fast-entry-board';
 import { DailyDashboard } from '@/components/daily-dashboard';
 import { useToast } from '@/lib/stores/ui';
 import {
   formatDateHeading,
-  getAdjacentDateWithRecords,
+  getDateOffsetString,
   getCurrentDate,
+  isValidIsoDate,
 } from '@/lib/utils';
 import type { Farmer, MilkDelivery } from '@/types';
 import {
@@ -54,7 +56,7 @@ export function HomeContent() {
         setDeliveries(deliveriesData);
 
         const paramDate = searchParams?.get('date');
-        if (paramDate) {
+        if (paramDate && isValidIsoDate(paramDate)) {
           setSelectedDate(paramDate);
         } else {
           setSelectedDate(today);
@@ -78,7 +80,7 @@ export function HomeContent() {
 
   useEffect(() => {
     const param = searchParams?.get('date');
-    if (param && param !== selectedDate) {
+    if (param && param !== selectedDate && isValidIsoDate(param)) {
       setSelectedDate(param);
     }
   }, [searchParams, selectedDate]);
@@ -136,14 +138,10 @@ export function HomeContent() {
     }
   };
 
-  const recordDates = useMemo(
-    () => Array.from(new Set(deliveries.map((delivery) => delivery.date))).sort(),
-    [deliveries]
-  );
-  const previousDate = getAdjacentDateWithRecords(selectedDate, 'previous', recordDates);
-  const nextDate = getAdjacentDateWithRecords(selectedDate, 'next', recordDates);
-  const canGoBack = previousDate !== selectedDate;
-  const canGoForward = nextDate !== selectedDate;
+  const previousDate = getDateOffsetString(selectedDate, -1);
+  const nextDate = getDateOffsetString(selectedDate, 1);
+  const canGoBack = isValidIsoDate(selectedDate);
+  const canGoForward = nextDate <= getCurrentDate();
 
   const updateDateInUrl = (value: string, replace = false) => {
     const url = `/?date=${value}`;
@@ -152,7 +150,7 @@ export function HomeContent() {
   };
 
   const handleDateChange = (value: string) => {
-    if (value > getCurrentDate()) return;
+    if (!isValidIsoDate(value) || value > getCurrentDate()) return;
     setSelectedDate(value);
     updateDateInUrl(value);
   };
@@ -222,6 +220,13 @@ export function HomeContent() {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
+            <Input
+              type="date"
+              value={selectedDate}
+              max={getCurrentDate()}
+              onChange={(event) => handleDateChange(event.target.value)}
+              className="h-10 w-44"
+            />
             <Button
               size="sm"
               variant="outline"

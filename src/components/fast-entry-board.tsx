@@ -200,7 +200,7 @@ export function FastEntryBoard({
           <div className="divide-y divide-gray-100">
             {filteredFarmers.map((farmer, index) => {
               const delivery = selectedDeliveryForFarmer(farmer.id);
-              const currentEntry = entries[farmer.id] ?? (delivery ? delivery.litres : 0);
+const currentEntry = entries[farmer.id] ?? (delivery ? delivery.litres : undefined);
               const isSubmitting = submitting[farmer.id];
               const isSaved = !!delivery;
 
@@ -284,7 +284,7 @@ export function FastEntryBoard({
                         <Button
                           size="sm"
                           onClick={() => handleSubmit(farmer.id)}
-                          disabled={isSubmitting || isLoading || !currentEntry || currentEntry <= 0}
+                          disabled={isSubmitting || isLoading || currentEntry === undefined || currentEntry <= 0}
                           className="sm:hidden"
                         >
                           {isSubmitting ? '...' : 'Save'}
@@ -292,7 +292,7 @@ export function FastEntryBoard({
                         <Button
                           size="sm"
                           onClick={() => handleSubmit(farmer.id)}
-                          disabled={isSubmitting || isLoading || !currentEntry || currentEntry <= 0}
+                          disabled={isSubmitting || isLoading || currentEntry === undefined || currentEntry <= 0}
                           className="hidden sm:inline-flex"
                         >
                           {isSubmitting ? 'Saving...' : 'Save'}
