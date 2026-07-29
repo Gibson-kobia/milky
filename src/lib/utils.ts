@@ -54,6 +54,28 @@ export const getCurrentDate = () => {
   return format(new Date(), 'yyyy-MM-dd');
 };
 
+export const normalizeDateString = (value: unknown) => {
+  if (!value) return '';
+
+  if (value instanceof Date) {
+    return format(value, 'yyyy-MM-dd');
+  }
+
+  const trimmed = String(value).trim();
+  if (!trimmed) return '';
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}[Tt]/.test(trimmed)) {
+    return trimmed.slice(0, 10);
+  }
+
+  const parsed = parseISO(trimmed);
+  return isValid(parsed) ? format(parsed, 'yyyy-MM-dd') : trimmed;
+};
+
 export const getTodayString = getCurrentDate;
 
 export const getDateOffsetString = (dateString: string, offset: number) => {

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getDateOffsetString, validateMilkQuantity } from '@/lib/utils';
+import { getDateOffsetString, normalizeDateString, validateMilkQuantity } from '@/lib/utils';
 import type { Farmer, MilkDelivery } from '@/types';
 import FarmerProfileModal from './farmer-profile-modal';
 
@@ -40,14 +40,23 @@ export function FastEntryBoard({
 
   const activeFarmers = farmers.filter((f) => f.active);
   const pendingFlag = isPending ?? false;
+  const normalizedSelectedDate = normalizeDateString(selectedDate);
+  const displayedDeliveries = deliveries.filter(
+    (d) =>
+      normalizeDateString(d.date) === normalizedSelectedDate &&
+      d.delivery_type === 'morning'
+  );
+  const missingFarmers = activeFarmers.filter((farmer) =>
+    !displayedDeliveries.some((delivery) => delivery.farmer_id === farmer.id)
+  );
+
+  console.log('RAW_DELIVERIES', deliveries);
+  console.log('SELECTED_DATE', normalizedSelectedDate);
+  console.log('DISPLAYED_DELIVERIES', displayedDeliveries);
+  console.log('MISSING_FARMERS', missingFarmers);
 
   const selectedDeliveryForFarmer = (farmerId: string) =>
-    deliveries.find(
-      (d) =>
-        d.farmer_id === farmerId &&
-        d.date === selectedDate &&
-        d.delivery_type === 'morning'
-    );
+    displayedDeliveries.find((d) => d.farmer_id === farmerId);
 
   const hasRecentDelivery = (farmerId: string) => {
     const sevenDaysAgo = getDateOffsetString(selectedDate, -7);

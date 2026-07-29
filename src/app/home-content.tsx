@@ -14,6 +14,7 @@ import {
   getDateOffsetString,
   getCurrentDate,
   isValidIsoDate,
+  normalizeDateString,
 } from '@/lib/utils';
 import type { Farmer, MilkDelivery } from '@/types';
 import {
@@ -156,7 +157,9 @@ export function HomeContent() {
   };
 
   const selectedDeliveries = deliveries.filter(
-    (d) => d.date === selectedDate && d.delivery_type === 'morning'
+    (d) =>
+      normalizeDateString(d.date) === normalizeDateString(selectedDate) &&
+      d.delivery_type === 'morning'
   );
 
   const totalLitres = selectedDeliveries.reduce((sum, d) => sum + d.litres, 0);
