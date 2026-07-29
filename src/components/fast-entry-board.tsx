@@ -41,17 +41,42 @@ export function FastEntryBoard({
   const activeFarmers = farmers.filter((f) => f.active);
   const pendingFlag = isPending ?? false;
   const normalizedSelectedDate = normalizeDateString(selectedDate);
-  const displayedDeliveries = deliveries.filter(
-    (d) =>
-      normalizeDateString(d.date) === normalizedSelectedDate &&
-      d.delivery_type === 'morning'
-  );
+  const displayedDeliveries = deliveries.filter((delivery) => {
+    const rawDate = delivery.date;
+    const normalizedDate = normalizeDateString(rawDate);
+    const matches =
+      normalizedDate === normalizedSelectedDate && delivery.delivery_type === 'morning';
+
+    console.log('RAW_ROW', {
+      id: delivery.id,
+      rawDate,
+      litres: delivery.litres,
+      deliveryType: delivery.delivery_type,
+    });
+    console.log('NORMALIZED_DATE', { rawDate, normalizedDate });
+    console.log('SELECTED_DATE', {
+      value: selectedDate,
+      normalizedValue: normalizedSelectedDate,
+      length: String(selectedDate).length,
+      json: JSON.stringify(selectedDate),
+    });
+    console.log('COMPARISON_RESULT', { normalizedDate, normalizedSelectedDate, matches });
+    if (!matches) {
+      console.log('REASON_IF_FALSE', {
+        normalizedDate,
+        normalizedSelectedDate,
+        deliveryType: delivery.delivery_type,
+        selectedDate,
+      });
+    }
+
+    return matches;
+  });
   const missingFarmers = activeFarmers.filter((farmer) =>
     !displayedDeliveries.some((delivery) => delivery.farmer_id === farmer.id)
   );
 
   console.log('RAW_DELIVERIES', deliveries);
-  console.log('SELECTED_DATE', normalizedSelectedDate);
   console.log('DISPLAYED_DELIVERIES', displayedDeliveries);
   console.log('MISSING_FARMERS', missingFarmers);
 
