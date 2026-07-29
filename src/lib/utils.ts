@@ -68,8 +68,9 @@ export const normalizeDateString = (value: unknown) => {
     return trimmed;
   }
 
-  if (/^\d{4}-\d{2}-\d{2}[Tt]/.test(trimmed)) {
-    return trimmed.slice(0, 10);
+  const datePrefixMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (datePrefixMatch) {
+    return datePrefixMatch[1];
   }
 
   const parsed = parseISO(trimmed);

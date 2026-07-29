@@ -41,17 +41,47 @@ export function FastEntryBoard({
   const activeFarmers = farmers.filter((f) => f.active);
   const pendingFlag = isPending ?? false;
   const normalizedSelectedDate = normalizeDateString(selectedDate);
-  const displayedDeliveries = deliveries.filter(
-    (d) =>
-      normalizeDateString(d.date) === normalizedSelectedDate &&
-      d.delivery_type === 'morning'
-  );
+  const displayedDeliveries = deliveries.filter((delivery) => {
+    const rawDate = delivery.date;
+    const normalizedDate = normalizeDateString(rawDate);
+    const matches =
+      normalizedDate === normalizedSelectedDate && delivery.delivery_type === 'morning';
+
+    console.log('RAW_ROW', {
+      id: delivery.id,
+      rawDate,
+      litres: delivery.litres,
+      deliveryType: delivery.delivery_type,
+    });
+    console.log('NORMALIZED_DATE', { rawDate, normalizedDate });
+    console.log('SELECTED_DATE', {
+      value: selectedDate,
+      normalizedValue: normalizedSelectedDate,
+      length: String(selectedDate).length,
+      json: JSON.stringify(selectedDate),
+    });
+    console.log('COMPARISON_RESULT', { normalizedDate, normalizedSelectedDate, matches });
+    if (!matches) {
+      console.log('REASON_IF_FALSE', {
+        normalizedDate,
+        normalizedSelectedDate,
+        deliveryType: delivery.delivery_type,
+        selectedDate,
+      });
+    }
+
+    return matches;
+  });
   const missingFarmers = activeFarmers.filter((farmer) =>
     !displayedDeliveries.some((delivery) => delivery.farmer_id === farmer.id)
   );
 
+  console.log('RENDER_STATE', {
+    selectedDate,
+    deliveriesLength: deliveries.length,
+    displayedDeliveriesLength: displayedDeliveries.length,
+  });
   console.log('RAW_DELIVERIES', deliveries);
-  console.log('SELECTED_DATE', normalizedSelectedDate);
   console.log('DISPLAYED_DELIVERIES', displayedDeliveries);
   console.log('MISSING_FARMERS', missingFarmers);
 
@@ -59,13 +89,13 @@ export function FastEntryBoard({
     displayedDeliveries.find((d) => d.farmer_id === farmerId);
 
   const hasRecentDelivery = (farmerId: string) => {
-    const sevenDaysAgo = getDateOffsetString(selectedDate, -7);
+    const sevenDaysAgo = getDateOffsetString(normalizedSelectedDate, -7);
     return deliveries.some(
       (d) =>
         d.farmer_id === farmerId &&
         d.delivery_type === 'morning' &&
-        d.date >= sevenDaysAgo &&
-        d.date < selectedDate
+        normalizeDateString(d.date) >= sevenDaysAgo &&
+        normalizeDateString(d.date) < normalizedSelectedDate
     );
   };
 

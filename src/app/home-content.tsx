@@ -104,9 +104,11 @@ export function HomeContent() {
         setDeliveries((prev) => [
           ...prev.filter(
             (d) =>
-              !(d.farmer_id === farmerId &&
-                d.date === date &&
-                d.delivery_type === 'morning')
+              !(
+                d.farmer_id === farmerId &&
+                normalizeDateString(d.date) === normalizeDateString(date) &&
+                d.delivery_type === 'morning'
+              )
           ),
           newDelivery,
         ]);
