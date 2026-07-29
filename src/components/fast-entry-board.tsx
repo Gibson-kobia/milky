@@ -37,38 +37,29 @@ export function FastEntryBoard({
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState('');
   const inputRefs = useRef<Record<string, HTMLInputElement>>({});
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
 
   const activeFarmers = farmers.filter((f) => f.active);
   const pendingFlag = isPending ?? false;
   const normalizedSelectedDate = normalizeDateString(selectedDate);
+
+  console.group('STEP 2 - TARGET DATE');
+  const rowsMatchingSelectedDate = deliveries.filter(
+    (delivery) => normalizeDateString(delivery.date) === normalizedSelectedDate
+  );
+  console.log({
+    selectedDate,
+    rowsMatchingSelectedDate: rowsMatchingSelectedDate.length,
+    sampleRows: rowsMatchingSelectedDate.slice(0, 5),
+  });
+  console.groupEnd();
+
   const displayedDeliveries = deliveries.filter((delivery) => {
     const rawDate = delivery.date;
     const normalizedDate = normalizeDateString(rawDate);
     const matches =
       normalizedDate === normalizedSelectedDate && delivery.delivery_type === 'morning';
-
-    console.log('RAW_ROW', {
-      id: delivery.id,
-      rawDate,
-      litres: delivery.litres,
-      deliveryType: delivery.delivery_type,
-    });
-    console.log('NORMALIZED_DATE', { rawDate, normalizedDate });
-    console.log('SELECTED_DATE', {
-      value: selectedDate,
-      normalizedValue: normalizedSelectedDate,
-      length: String(selectedDate).length,
-      json: JSON.stringify(selectedDate),
-    });
-    console.log('COMPARISON_RESULT', { normalizedDate, normalizedSelectedDate, matches });
-    if (!matches) {
-      console.log('REASON_IF_FALSE', {
-        normalizedDate,
-        normalizedSelectedDate,
-        deliveryType: delivery.delivery_type,
-        selectedDate,
-      });
-    }
 
     return matches;
   });
@@ -76,14 +67,55 @@ export function FastEntryBoard({
     !displayedDeliveries.some((delivery) => delivery.farmer_id === farmer.id)
   );
 
-  console.log('RENDER_STATE', {
-    selectedDate,
-    deliveriesLength: deliveries.length,
-    displayedDeliveriesLength: displayedDeliveries.length,
+  console.group('STEP 3 - CONVERSION');
+  console.log({
+    raw: deliveries[0],
+    converted: deliveries[0] ? { ...deliveries[0], date: normalizeDateString(deliveries[0].date) } : null,
   });
-  console.log('RAW_DELIVERIES', deliveries);
-  console.log('DISPLAYED_DELIVERIES', displayedDeliveries);
-  console.log('MISSING_FARMERS', missingFarmers);
+  console.groupEnd();
+
+  console.group('STEP 4 - FILTER');
+  console.log({
+    filterName: 'selected-day morning deliveries',
+    beforeCount: deliveries.length,
+    afterCount: displayedDeliveries.length,
+  });
+  if (displayedDeliveries.length < deliveries.length) {
+    console.error({
+      reason: 'rows removed by selected-day morning filter',
+      removedRows: deliveries.filter((delivery) => !displayedDeliveries.some((displayed) => displayed.id === delivery.id)).slice(0, 5),
+    });
+  }
+  console.groupEnd();
+
+  console.group('STEP 5 - STATE');
+  console.log({
+    displayedDeliveries,
+    selectedDate,
+    farmerCount: activeFarmers.length,
+  });
+  console.groupEnd();
+
+  const filteredFarmers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return activeFarmers.filter((farmer) =>
+      farmer.name.toLowerCase().includes(query)
+    );
+  }, [activeFarmers, search]);
+
+  console.group('STEP 6 - RENDER');
+  console.log({ cardsRendered: filteredFarmers.length });
+  console.groupEnd();
+
+  if (renderCountRef.current > 10) {
+    console.group('STEP 7 - LOOP DETECTOR');
+    console.warn({
+      component: 'FastEntryBoard',
+      renderCount: renderCountRef.current,
+      reason: 'component rendered more than ten times',
+    });
+    console.groupEnd();
+  }
 
   const selectedDeliveryForFarmer = (farmerId: string) =>
     displayedDeliveries.find((d) => d.farmer_id === farmerId);
@@ -98,13 +130,6 @@ export function FastEntryBoard({
         normalizeDateString(d.date) < normalizedSelectedDate
     );
   };
-
-  const filteredFarmers = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return activeFarmers.filter((farmer) =>
-      farmer.name.toLowerCase().includes(query)
-    );
-  }, [activeFarmers, search]);
 
   const handleInputChange = (farmerId: string, value: string) => {
     const numValue = parseFloat(value);

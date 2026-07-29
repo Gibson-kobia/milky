@@ -53,6 +53,25 @@ export function HomeContent() {
           fetchDeliveriesInRange('1900-01-01', today),
         ]);
 
+        const datesSummary = deliveriesData.reduce<Record<string, number>>((acc, delivery) => {
+          const key = normalizeDateString(delivery.date);
+          acc[key] = (acc[key] ?? 0) + 1;
+          return acc;
+        }, {});
+
+        const sortedDates = Object.entries(datesSummary).sort(([a], [b]) => a.localeCompare(b));
+        const summaryLines = sortedDates.map(([date, count]) => `${date}: ${count}`);
+
+        console.group('STEP 1 - SUPABASE FETCH');
+        console.log({
+          count: deliveriesData.length,
+          minDate: sortedDates[0]?.[0] ?? null,
+          maxDate: sortedDates[sortedDates.length - 1]?.[0] ?? null,
+          uniqueDates: sortedDates.length,
+          datesSummary: summaryLines,
+        });
+        console.groupEnd();
+
         setFarmers(farmersData);
         setDeliveries(deliveriesData);
 
