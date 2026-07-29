@@ -9,7 +9,7 @@ import type {
   Payment,
 } from '@/types';
 import { getSupabaseClient } from '@/lib/supabase/client';
-import { getMonthStartForDate, validateMilkQuantity } from '@/lib/utils';
+import { getMonthStartForDate, normalizeDateString, validateMilkQuantity } from '@/lib/utils';
 
 export const isBrowser = () => typeof window !== 'undefined';
 export const isOnline = () => isBrowser() && window.navigator.onLine;
@@ -27,7 +27,7 @@ function convertDeliveryRow(row: Record<string, unknown>): MilkDelivery {
   return {
     id: String(row.id),
     farmer_id: String(row.farmer_id),
-    date: String(row.date),
+    date: normalizeDateString(row.date),
     litres: parsedLitres,
     delivery_type: String(row.delivery_type) as MilkDelivery['delivery_type'],
     created_at: String(row.created_at),
