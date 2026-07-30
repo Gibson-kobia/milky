@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,37 +18,12 @@ import {
 } from '@/lib/utils';
 import type { Farmer, MilkDelivery } from '@/types';
 import {
-  fetchDeliveriesInRange,
+  fetchDeliveriesByDate,
   fetchFarmers,
   saveMilkDelivery,
   updateMilkDelivery,
 } from '@/lib/data';
 import { requireAuth } from '@/lib/auth';
-
-function logHomeStage(
-  stage: string,
-  rows: MilkDelivery[],
-  selectedDate: string,
-  farmerNames: string[],
-  lastKeyRef: React.MutableRefObject<string>
-) {
-  const deliveryDates = rows.slice(0, 3).map((row) => row.date);
-  const names = farmerNames.slice(0, 3);
-  const signature = JSON.stringify({ stage, rowCount: rows.length, selectedDate, deliveryDates, names });
-
-  if (lastKeyRef.current === signature) {
-    return;
-  }
-
-  lastKeyRef.current = signature;
-  console.groupCollapsed(`Delivery pipeline :: ${stage}`);
-  console.log(`Stage: ${stage}`);
-  console.log(`Row count: ${rows.length}`);
-  console.log(`Selected date: ${selectedDate}`);
-  console.log(`First 3 delivery dates: ${deliveryDates.join(', ') || 'none'}`);
-  console.log(`First 3 farmer names: ${names.join(', ') || 'none'}`);
-  console.groupEnd();
-}
 
 export function HomeContent() {
   const router = useRouter();
@@ -62,7 +37,6 @@ export function HomeContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const homeLogKeyRef = useRef('');
 
   useEffect(() => {
     if (!requireAuth()) {
@@ -74,20 +48,20 @@ export function HomeContent() {
       setIsLoading(true);
       try {
         const today = getCurrentDate();
+        const paramDate = searchParams?.get('date');
+        const initialDate = paramDate && isValidIsoDate(paramDate) ? paramDate : today;
+
         const [farmersData, deliveriesData] = await Promise.all([
           fetchFarmers(),
-          fetchDeliveriesInRange('1900-01-01', today),
+          fetchDeliveriesByDate(initialDate),
         ]);
 
         setFarmers(farmersData);
         setDeliveries(deliveriesData);
+        setSelectedDate(initialDate);
 
-        const paramDate = searchParams?.get('date');
-        if (paramDate && isValidIsoDate(paramDate)) {
-          setSelectedDate(paramDate);
-        } else {
-          setSelectedDate(today);
-          router.replace(`/?date=${today}`);
+        if (!paramDate || !isValidIsoDate(paramDate)) {
+          router.replace(`/?date=${initialDate}`);
         }
       } catch (err) {
         setLoadError(
@@ -111,6 +85,39 @@ export function HomeContent() {
       setSelectedDate(param);
     }
   }, [searchParams, selectedDate]);
+
+  useEffect(() => {
+    if (!isReady) return;
+
+    let isCancelled = false;
+    const loadSelectedDateDeliveries = async () => {
+      setIsLoading(true);
+      try {
+        const deliveriesData = await fetchDeliveriesByDate(selectedDate);
+        if (!isCancelled) {
+          setDeliveries(deliveriesData);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setLoadError(
+            'Unable to load data. Please check your Supabase settings and try again.'
+          );
+          error('Failed to load data');
+          console.error(err);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadSelectedDateDeliveries();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [error, isReady, selectedDate]);
 
   const handleAddDelivery = async (
     farmerId: string,
@@ -291,19 +298,16 @@ export function HomeContent() {
             </Button>
           </Card>
         ) : (
-          <>
-            {logHomeStage('FAST_ENTRY_BOARD_PROPS', deliveries, selectedDate, sortedFarmers.map((farmer) => farmer.name), homeLogKeyRef)}
-            <FastEntryBoard
-              farmers={sortedFarmers}
-              deliveries={deliveries}
-              selectedDate={selectedDate}
-              onAddDelivery={handleAddDelivery}
+          <FastEntryBoard
+            farmers={sortedFarmers}
+            deliveries={deliveries}
+            selectedDate={selectedDate}
+            onAddDelivery={handleAddDelivery}
             onUpdateDelivery={handleUpdateDelivery}
             isLoading={isLoading}
             isSaving={isSaving}
             isPending={isPending}
-            />
-          </>
+          />
         )}
       </div>
     </div>
