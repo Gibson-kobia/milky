@@ -21,6 +21,68 @@ interface FastEntryBoardProps {
   isPending?: boolean;
 }
 
+function logFilterDebug(
+  deliveries: MilkDelivery[],
+  selectedDate: string,
+  lastKeyRef: React.MutableRefObject<string>
+) {
+  const debugRows: Array<{
+    deliveryDate: string;
+    deliveryDateType: string;
+    normalizedDeliveryDate: string;
+    selectedDate: string;
+    normalizedSelectedDate: string;
+    deliveryType: string;
+    comparisonResult: boolean;
+  }> = [];
+
+  for (const delivery of deliveries) {
+    const deliveryDate = String(delivery.date ?? '');
+    if (!deliveryDate.startsWith('2026-07-27') || debugRows.length >= 10) {
+      continue;
+    }
+
+    debugRows.push({
+      deliveryDate,
+      deliveryDateType: typeof delivery.date,
+      normalizedDeliveryDate: deliveryDate,
+      selectedDate,
+      normalizedSelectedDate: selectedDate,
+      deliveryType: delivery.delivery_type,
+      comparisonResult: deliveryDate === selectedDate && delivery.delivery_type === 'morning',
+    });
+  }
+
+  const signature = JSON.stringify({ selectedDate, rows: debugRows });
+  if (lastKeyRef.current === signature) {
+    return;
+  }
+
+  lastKeyRef.current = signature;
+  console.groupCollapsed('Delivery pipeline :: FILTER_DEBUG');
+  if (debugRows.length === 0) {
+    console.log('No matching 2026-07-27 deliveries found.');
+  } else {
+    const output = debugRows
+      .map(
+        (row) =>
+          [
+            '----------',
+            `Delivery date:\n${row.deliveryDate}`,
+            `typeof delivery.date: ${row.deliveryDateType}`,
+            `normalizedDeliveryDate: ${row.normalizedDeliveryDate}`,
+            `selectedDate: ${row.selectedDate}`,
+            `normalizedSelectedDate: ${row.normalizedSelectedDate}`,
+            `delivery.delivery_type: ${row.deliveryType}`,
+            `comparison result: ${String(row.comparisonResult)}`,
+          ].join('\n')
+      )
+      .join('\n');
+    console.log(output);
+  }
+  console.groupEnd();
+}
+
 function logBoardStage(
   stage: string,
   rows: MilkDelivery[],
@@ -68,6 +130,7 @@ export function FastEntryBoard({
   const pendingFlag = isPending ?? false;
   const normalizedSelectedDate = normalizeDateString(selectedDate);
   logBoardStage('BEFORE_DATE_FILTER', deliveries, selectedDate, activeFarmers.map((farmer) => farmer.name), boardLogKeyRef);
+  logFilterDebug(deliveries, selectedDate, boardLogKeyRef);
   const displayedDeliveries = deliveries.filter((delivery) => {
     const rawDate = delivery.date;
     const normalizedDate = normalizeDateString(rawDate);
