@@ -14,6 +14,32 @@ import { getMonthStartForDate, normalizeDateString, validateMilkQuantity } from 
 export const isBrowser = () => typeof window !== 'undefined';
 export const isOnline = () => isBrowser() && window.navigator.onLine;
 
+const deliveryLogSignatures = new Map<string, string>();
+
+function logDeliveryStage(
+  stage: string,
+  rows: Array<Record<string, unknown> | MilkDelivery>,
+  selectedDate: string,
+  farmerNames: string[] = []
+) {
+  const deliveryDates = rows.slice(0, 3).map((row) => String((row as Record<string, unknown>).date ?? ''));
+  const names = farmerNames.slice(0, 3);
+  const signature = JSON.stringify({ stage, rowCount: rows.length, selectedDate, deliveryDates, names });
+
+  if (deliveryLogSignatures.get(stage) === signature) {
+    return;
+  }
+
+  deliveryLogSignatures.set(stage, signature);
+  console.groupCollapsed(`Delivery pipeline :: ${stage}`);
+  console.log(`Stage: ${stage}`);
+  console.log(`Row count: ${rows.length}`);
+  console.log(`Selected date: ${selectedDate}`);
+  console.log(`First 3 delivery dates: ${deliveryDates.join(', ') || 'none'}`);
+  console.log(`First 3 farmer names: ${names.join(', ') || 'none'}`);
+  console.groupEnd();
+}
+
 function convertDeliveryRow(row: Record<string, unknown>): MilkDelivery {
   // Safe numeric conversion
   const safeNumber = (val: unknown): number => {
@@ -140,7 +166,10 @@ export async function fetchDeliveriesByDate(date: string): Promise<MilkDelivery[
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.from('milk_deliveries').select('*').eq('date', date);
   if (error || !data) return [];
-  const deliveries = (data as Record<string, unknown>[]).map(convertDeliveryRow);
+  const rawRows = data as Record<string, unknown>[];
+  logDeliveryStage('SUPABASE_DELIVERIES', rawRows, date);
+  const deliveries = rawRows.map(convertDeliveryRow);
+  logDeliveryStage('CONVERTED_DELIVERIES', deliveries, date);
   return deliveries;
 }
 
@@ -156,7 +185,10 @@ export async function fetchDeliveriesInRange(
     .lte('date', endDate)
     .order('date', { ascending: true });
   if (error || !data) return [];
-  const deliveries = (data as Record<string, unknown>[]).map(convertDeliveryRow);
+  const rawRows = data as Record<string, unknown>[];
+  logDeliveryStage('SUPABASE_DELIVERIES', rawRows, endDate);
+  const deliveries = rawRows.map(convertDeliveryRow);
+  logDeliveryStage('CONVERTED_DELIVERIES', deliveries, endDate);
   return deliveries;
 }
 

@@ -21,6 +21,31 @@ interface FastEntryBoardProps {
   isPending?: boolean;
 }
 
+function logBoardStage(
+  stage: string,
+  rows: MilkDelivery[],
+  selectedDate: string,
+  farmerNames: string[],
+  lastKeyRef: React.MutableRefObject<string>
+) {
+  const deliveryDates = rows.slice(0, 3).map((row) => row.date);
+  const names = farmerNames.slice(0, 3);
+  const signature = JSON.stringify({ stage, rowCount: rows.length, selectedDate, deliveryDates, names });
+
+  if (lastKeyRef.current === signature) {
+    return;
+  }
+
+  lastKeyRef.current = signature;
+  console.groupCollapsed(`Delivery pipeline :: ${stage}`);
+  console.log(`Stage: ${stage}`);
+  console.log(`Row count: ${rows.length}`);
+  console.log(`Selected date: ${selectedDate}`);
+  console.log(`First 3 delivery dates: ${deliveryDates.join(', ') || 'none'}`);
+  console.log(`First 3 farmer names: ${names.join(', ') || 'none'}`);
+  console.groupEnd();
+}
+
 export function FastEntryBoard({
   farmers,
   deliveries,
@@ -37,53 +62,25 @@ export function FastEntryBoard({
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState('');
   const inputRefs = useRef<Record<string, HTMLInputElement>>({});
+  const boardLogKeyRef = useRef('');
 
   const activeFarmers = farmers.filter((f) => f.active);
   const pendingFlag = isPending ?? false;
   const normalizedSelectedDate = normalizeDateString(selectedDate);
+  logBoardStage('BEFORE_DATE_FILTER', deliveries, selectedDate, activeFarmers.map((farmer) => farmer.name), boardLogKeyRef);
   const displayedDeliveries = deliveries.filter((delivery) => {
     const rawDate = delivery.date;
     const normalizedDate = normalizeDateString(rawDate);
     const matches =
       normalizedDate === normalizedSelectedDate && delivery.delivery_type === 'morning';
 
-    console.log('RAW_ROW', {
-      id: delivery.id,
-      rawDate,
-      litres: delivery.litres,
-      deliveryType: delivery.delivery_type,
-    });
-    console.log('NORMALIZED_DATE', { rawDate, normalizedDate });
-    console.log('SELECTED_DATE', {
-      value: selectedDate,
-      normalizedValue: normalizedSelectedDate,
-      length: String(selectedDate).length,
-      json: JSON.stringify(selectedDate),
-    });
-    console.log('COMPARISON_RESULT', { normalizedDate, normalizedSelectedDate, matches });
-    if (!matches) {
-      console.log('REASON_IF_FALSE', {
-        normalizedDate,
-        normalizedSelectedDate,
-        deliveryType: delivery.delivery_type,
-        selectedDate,
-      });
-    }
-
     return matches;
   });
+  logBoardStage('AFTER_DATE_FILTER', displayedDeliveries, selectedDate, activeFarmers.map((farmer) => farmer.name), boardLogKeyRef);
   const missingFarmers = activeFarmers.filter((farmer) =>
     !displayedDeliveries.some((delivery) => delivery.farmer_id === farmer.id)
   );
-
-  console.log('RENDER_STATE', {
-    selectedDate,
-    deliveriesLength: deliveries.length,
-    displayedDeliveriesLength: displayedDeliveries.length,
-  });
-  console.log('RAW_DELIVERIES', deliveries);
-  console.log('DISPLAYED_DELIVERIES', displayedDeliveries);
-  console.log('MISSING_FARMERS', missingFarmers);
+  void missingFarmers;
 
   const selectedDeliveryForFarmer = (farmerId: string) =>
     displayedDeliveries.find((d) => d.farmer_id === farmerId);
@@ -105,6 +102,8 @@ export function FastEntryBoard({
       farmer.name.toLowerCase().includes(query)
     );
   }, [activeFarmers, search]);
+
+  logBoardStage('BEFORE_RENDER', displayedDeliveries, selectedDate, activeFarmers.map((farmer) => farmer.name), boardLogKeyRef);
 
   const handleInputChange = (farmerId: string, value: string) => {
     const numValue = parseFloat(value);
